@@ -88,6 +88,8 @@ from sklearn.neighbors import LocalOutlierFactor
 from scipy.stats import skew, kurtosis, entropy
 from scipy.fftpack import fft,fft2, fftshift
 from numpy import quantile, where, random
+
+from metrics import Metrics
 # =============================================================================
 # Load Dataset and Create Panda Dataframes
 # =============================================================================
@@ -159,43 +161,15 @@ for i in range(0, len(users)):
 # =============================================================================
 # feauture variable gets values 0, 1, 5, 6
 # where 0 is X, 1 is Y, 5 is magnitude and 6 is combined angle
-# I could use a class instead of lists for all these metrics. TODO 
 feauture = 5
 samples = 500
 overlap = 50
 print('Feature: ', feauture)
-accuracy = []
-f1score = []
-FAR = []
-FRR = []
-ROC = []
-falseAccept = []
-falseReject= []
-trueAccept = []
-trueReject= []
-sizeTest = []
 
-accuracy2 = []
-f1score2 = []
-FAR2 = []
-FRR2 = []
-ROC2 = []
-falseAccept2 = []
-falseReject2 = []
-trueAccept2 = []
-trueReject2 = []
-sizeTest2 = []
-
-accuracy3 = []
-f1score3 = []
-FAR3 = []
-FRR3 = []
-ROC3 = []
-falseAccept3 = []
-falseReject3 = []
-trueAccept3 = []
-trueReject3 = []
-sizeTest3 = []
+# Objects with metrics for each model
+accelerometerModel = Metrics()
+gyroscopeModel = Metrics()
+ensembleModel = Metrics()
 
 for user in users:
 
@@ -882,40 +856,37 @@ for user in users:
         testS = testS + testSize3[index]
         testS1 = testS1 + testSize1[index]
         testS2 = testS2 + testSize2[index]
-     
-    FAR3.append(far/10)
-    FRR3.append(frr/10)
-    
-    accuracy.append(accu1/10)
-    f1score.append(fscore1/10)
-    FAR.append(far1/10)
-    FRR.append(frr1/10)
-    falseAccept.append(FA1/10)
-    falseReject.append(FalseR1/10)
-    trueAccept.append(TrueA1/10)
-    trueReject.append(TrueR1/10)
-    sizeTest.append(abs(testS1/10))
-    
-    accuracy2.append(accu2/10)
-    f1score2.append(fscore2/10)
-    FAR2.append(far2/10)
-    FRR2.append(frr2/10)
-    falseAccept2.append(FA2/10)
-    falseReject2.append(FalseR1/10)
-    trueAccept2.append(TrueA1/10)
-    trueReject2.append(TrueR1/10)
-    sizeTest2.append(abs(testS1/10))
-    
-    accuracy3.append(accu/10)
-    f1score3.append(fscore/10)
-    FAR3.append(far/10)
-    FRR3.append(frr/10)
-    falseAccept3.append(FA/10)
-    falseReject3.append(FalseR/10)
-    trueAccept3.append(TrueA/10)
-    trueReject3.append(TrueR/10)
-    sizeTest3.append(abs(testS/10))
 
+    accelerometerModel.setAccuracy(accu1/10)
+    accelerometerModel.setf1score(fscore1/10)
+    accelerometerModel.setFAR(far1/10)
+    accelerometerModel.setFRR(frr1/10)
+    accelerometerModel.setfalseAccept(FA1/10)
+    accelerometerModel.setfalseReject(FalseR1/10)
+    accelerometerModel.settrueAccept(TrueA1/10)
+    accelerometerModel.settrueReject(TrueR1/10)
+    accelerometerModel.setsizeTest(abs(testS1/10))
+
+    gyroscopeModel.setAccuracy(accu2/10)
+    gyroscopeModel.setf1score(fscore2/10)
+    gyroscopeModel.setFAR(far2/10)
+    gyroscopeModel.setFRR(frr2/10)
+    gyroscopeModel.setfalseAccept(FA2/10)
+    gyroscopeModel.setfalseReject(FalseR2/10)
+    gyroscopeModel.settrueAccept(TrueA2/10)
+    gyroscopeModel.settrueReject(TrueR2/10)
+    gyroscopeModel.setsizeTest(abs(testS2/10))
+
+    ensembleModel.setAccuracy(accu/10)
+    ensembleModel.setf1score(fscore/10)
+    ensembleModel.setFAR(far/10)
+    ensembleModel.setFRR(frr/10)
+    ensembleModel.setfalseAccept(FA/10)
+    ensembleModel.setfalseReject(FalseR/10)
+    ensembleModel.settrueAccept(TrueA/10)
+    ensembleModel.settrueReject(TrueR/10)
+    ensembleModel.setsizeTest(abs(testS/10))
+    
 # =============================================================================
 # Performance Evaluation
 # ============================================================================= 
@@ -926,19 +897,19 @@ far_average = 0
 frr_average = 0
 roc_average = 0
 for i in range(0, len(users)):
-    accuracy_average = accuracy_average + accuracy[i]
-    f1score_average = f1score_average + f1score[i]
-    far_average = far_average + FAR[i]
-    frr_average = frr_average + FRR[i]
+    accuracy_average = accuracy_average + accelerometerModel.getAccuracy()[i]
+    f1score_average = f1score_average +  accelerometerModel.getf1score()[i] 
+    far_average = far_average +  accelerometerModel.getFAR()[i]
+    frr_average = frr_average +  accelerometerModel.getFRR()[i]
 
 print()
 print('AVERAGE ONE CLASS SVM PERFORMANCE MODEL 1:')
 print('Accuracy: ', accuracy_average / len(users), '\nF1 Score: ', f1score_average / len(users), '\nFAR: ', far_average / len(users), '\nFRR: ', frr_average / len(users))
-sumTest = sum(sizeTest)
-sumFalseAccept = sum(falseAccept)
-sumFalseReject = sum(falseReject)
-sumTrueAccept = sum(trueAccept)
-sumTrueReject = sum(trueReject)
+sumTest = sum(accelerometerModel.getsizeTest())
+sumFalseAccept = sum(accelerometerModel.getfalseAccept())
+sumFalseReject = sum(accelerometerModel.getfalseReject())
+sumTrueAccept = sum(accelerometerModel.gettrueAccept())
+sumTrueReject = sum(accelerometerModel.gettrueReject())
 print('Confusion Matrix')
 print(sumTrueReject, ' ',  sumFalseAccept)
 print(sumFalseReject, ' ',  sumTrueAccept)
@@ -950,19 +921,19 @@ far_average = 0
 frr_average = 0
 roc_average = 0
 for i in range(0, len(users)):
-    accuracy_average = accuracy_average + accuracy2[i]
-    f1score_average = f1score_average + f1score2[i]
-    far_average = far_average + FAR2[i]
-    frr_average = frr_average + FRR2[i]
+    accuracy_average = accuracy_average + gyroscopeModel.getAccuracy()[i]
+    f1score_average = f1score_average +  gyroscopeModel.getf1score()[i] 
+    far_average = far_average +  gyroscopeModel.getFAR()[i]
+    frr_average = frr_average +  gyroscopeModel.getFRR()[i]
 
 print()
 print('AVERAGE ONE CLASS SVM PERFORMANCE MODEL 2:')
 print('Accuracy: ', accuracy_average / len(users), '\nF1 Score: ', f1score_average / len(users), '\nFAR: ', far_average / len(users), '\nFRR: ', frr_average / len(users))
-sumTest = sum(sizeTest)
-sumFalseAccept = sum(falseAccept2)
-sumFalseReject = sum(falseReject2)
-sumTrueAccept = sum(trueAccept2)
-sumTrueReject = sum(trueReject2)
+sumTest = sum(gyroscopeModel.getsizeTest())
+sumFalseAccept = sum(gyroscopeModel.getfalseAccept())
+sumFalseReject = sum(gyroscopeModel.getfalseReject())
+sumTrueAccept = sum(gyroscopeModel.gettrueAccept())
+sumTrueReject = sum(gyroscopeModel.gettrueReject())
 print('Confusion Matrix')
 print(sumTrueReject, ' ',  sumFalseAccept)
 print(sumFalseReject, ' ',  sumTrueAccept)
@@ -974,31 +945,19 @@ far_average = 0
 frr_average = 0
 roc_average = 0
 for i in range(0, len(users)):
-    accuracy_average = accuracy_average + accuracy2[i]
-    f1score_average = f1score_average + f1score2[i]
-    far_average = far_average + FAR2[i]
-    frr_average = frr_average + FRR2[i]
-
-print('**********************************************************************')
-accuracy_average = 0
-f1score_average = 0
-far_average = 0
-frr_average = 0
-roc_average = 0
-for i in range(0, len(users)):
-    accuracy_average = accuracy_average + accuracy3[i]
-    f1score_average = f1score_average + f1score3[i]
-    far_average = far_average + FAR3[i]
-    frr_average = frr_average + FRR3[i]
+    accuracy_average = accuracy_average + ensembleModel.getAccuracy()[i]
+    f1score_average = f1score_average +  ensembleModel.getf1score()[i] 
+    far_average = far_average +  ensembleModel.getFAR()[i]
+    frr_average = frr_average +  ensembleModel.getFRR()[i]
 
 print()
 print('AVERAGE ONE CLASS SVM PERFORMANCE ENSEMBLE:')
 print('Accuracy: ', accuracy_average / len(users), '\nF1 Score: ', f1score_average / len(users), '\nFAR: ', far_average / len(users), '\nFRR: ', frr_average / len(users))
-sumTest = sum(sizeTest)
-sumFalseAccept = sum(falseAccept3)
-sumFalseReject = sum(falseReject3)
-sumTrueAccept = sum(trueAccept3)
-sumTrueReject = sum(trueReject3)
+sumTest = sum(ensembleModel.getsizeTest())
+sumFalseAccept = sum(ensembleModel.getfalseAccept())
+sumFalseReject = sum(ensembleModel.getfalseReject())
+sumTrueAccept = sum(ensembleModel.gettrueAccept())
+sumTrueReject = sum(ensembleModel.gettrueReject())
 print('Confusion Matrix')
 print(sumTrueReject, ' ',  sumFalseAccept)
 print(sumFalseReject, ' ',  sumTrueAccept)
