@@ -90,6 +90,52 @@ from scipy.fftpack import fft,fft2, fftshift
 from numpy import quantile, where, random
 
 from metrics import Metrics
+from features import Features
+
+# This function extract features with the method sliding window.
+def FeatureExtraction(dataset, samples, overlap, output, feautureObject):
+
+    for w in range(0, dataset.shape[0] - samples, overlap):
+        end = w + samples 
+
+        #DFT
+        discreteFourier = fft(dataset.iloc[w:end, feauture])
+        # Frequencies
+        freq = np.fft.fftfreq(samples)
+
+        # Amplitudes
+        idx = (np.absolute(discreteFourier)).argsort()[-2:][::-1]
+        amplitude1 = np.absolute(discreteFourier[idx[0]])
+        amplitude2 = np.absolute(discreteFourier[idx[1]])
+        frequency2 = freq[idx[1]]
+
+        # Frequency features
+        mean_frequency = np.mean(freq)
+        feautureObject.setAmplitude1(amplitude1)
+        feautureObject.setAmplitude2(amplitude2)
+        feautureObject.setFrequency2(frequency2)
+        feautureObject.setMean_frequency(mean_frequency)
+
+        # Time Based Feautures
+        feautureObject.setΜean(np.mean(dataset.iloc[w:end, feauture]))
+        feautureObject.setSTD(np.std(dataset.iloc[w:end, feauture]))
+        feautureObject.setMax(np.max(dataset.iloc[w:end, feauture]))
+        feautureObject.setMin(np.min(dataset.iloc[w:end, feauture]))
+        feautureObject.setRange(np.ptp(dataset.iloc[w:end, feauture]))
+
+        percentile = np.percentile(dataset.iloc[w:end, feauture], [25, 50, 75])
+        feautureObject.setPercentile25(percentile[0])
+        feautureObject.setPercentile50(percentile[1])
+        feautureObject.setPercentile75(percentile[2])
+        feautureObject.setEntropy(entropy(dataset.iloc[w:end, feauture], base = 2))
+
+        feautureObject.setKurtosis(kurtosis(dataset.iloc[w:end, feauture]))
+        feautureObject.setSkewness(skew(dataset.iloc[w:end, feauture]))
+
+        # Output Label
+        feautureObject.setY(output)
+
+    return  feautureObject
 # =============================================================================
 # Load Dataset and Create Panda Dataframes
 # =============================================================================
@@ -172,49 +218,10 @@ gyroscopeModel = Metrics()
 ensembleModel = Metrics()
 
 for user in users:
-
-    ## Feautures 
-    # Statistic feautures based on time
-    Μean = []
-    STD = []
-    Max = []
-    Min = []
-    Range = []
-    Percentile25 = []
-    Percentile50 = []
-    Percentile75 = []
-    Kurtosis = []
-    Skewness = []
-    Entropy = []
-
-    # Statistics feautures based on frequency
-    Amplitude1 = []
-    Amplitude2 = []
-    Frequency2 = []
-    Mean_frequency = []
-
-    # Statistic feautures based on time
-    Μean_Gyroscope = []
-    STD_Gyroscope  = []
-    Max_Gyroscope  = []
-    Min_Gyroscope = []
-    Range_Gyroscope = []
-    Percentile25_Gyroscope = []
-    Percentile50_Gyroscope = []
-    Percentile75_Gyroscope = []
-    Kurtosis_Gyroscope = []
-    Skewness_Gyroscope = []
-    Entropy_Gyroscope = []
-
-    # Statistics feautures based on frequency
-    Amplitude1_Gyroscope = []
-    Amplitude2_Gyroscope = []
-    Frequency2_Gyroscope = []
-    Mean_frequency_Gyroscope = []
     
-    # Output label
-    list_y=[]
-    list_y_Gyroscope=[]
+    # Objects with features for each model
+    accelerometerFeatures = Features()
+    gyroscopeFeatures = Features()
 
     # Dataset dataframe
     df = pd.DataFrame() 
@@ -279,212 +286,54 @@ for user in users:
     # =============================================================================
     # Feature Extraction
     # =============================================================================     
-    # Create train dataset for accelerometer
-    for w in range(0, train.shape[0] - samples, overlap):
-        end = w + samples 
 
-        #DFT
-        discreteFourier = fft(train.iloc[w:end, feauture])
-        # Frequencies
-        freq = np.fft.fftfreq(samples)
+    accelerometerFeatures = FeatureExtraction(train, samples, overlap, 1, accelerometerFeatures)
+    gyroscopeFeatures = FeatureExtraction(train_gyroscope, samples, overlap, 1, gyroscopeFeatures)
 
-        # Amplitudes
-        idx = (np.absolute(discreteFourier)).argsort()[-2:][::-1]
-        amplitude1 = np.absolute(discreteFourier[idx[0]])
-        amplitude2 = np.absolute(discreteFourier[idx[1]])
-        frequency2 = freq[idx[1]]
+    accelerometerFeatures = FeatureExtraction(test, samples, overlap, -1, accelerometerFeatures)
+    gyroscopeFeatures = FeatureExtraction(test_gyroscope, samples, overlap, -1, gyroscopeFeatures)
 
-        # Frequency features
-        mean_frequency = np.mean(freq)
-        Amplitude1.append(amplitude1)
-        Amplitude2.append(amplitude2)
-        Frequency2.append(frequency2)
-        Mean_frequency.append(mean_frequency)
-
-        # Time Based Feautures
-        Μean.append(np.mean(train.iloc[w:end, feauture]))
-        STD.append(np.std(train.iloc[w:end, feauture]))
-        Max.append(np.max(train.iloc[w:end, feauture]))
-        Min.append(np.min(train.iloc[w:end, feauture]))
-        Range.append(np.ptp(train.iloc[w:end, feauture]))
-
-        percentile = np.percentile(train.iloc[w:end, feauture], [25, 50, 75])
-        Percentile25.append(percentile[0])
-        Percentile50.append(percentile[1])
-        Percentile75.append(percentile[2])
-        Entropy.append(entropy(train.iloc[w:end, feauture], base = 2))
-
-        Kurtosis.append(kurtosis(train.iloc[w:end, feauture]))
-        Skewness.append(skew(train.iloc[w:end, feauture]))
-
-        # Output Label
-        list_y.append(1)
-
-    # Create train dataset for gyroscope
-    for w in range(0, train_gyroscope.shape[0] - samples, overlap):
-        end = w + samples 
-
-        #DFT
-        discreteFourier = fft(train_gyroscope.iloc[w:end, feauture])
-        # Frequencies
-        freq = np.fft.fftfreq(samples)
-
-        # Amplitudes
-        idx = (np.absolute(discreteFourier)).argsort()[-2:][::-1]
-        amplitude1 = np.absolute(discreteFourier[idx[0]])
-        amplitude2 = np.absolute(discreteFourier[idx[1]])
-        frequency2 = freq[idx[1]]
-
-        # Frequency features
-        mean_frequency = np.mean(freq)
-        Amplitude1_Gyroscope.append(amplitude1)
-        Amplitude2_Gyroscope.append(amplitude2)
-        Frequency2_Gyroscope.append(frequency2)
-        Mean_frequency_Gyroscope.append(mean_frequency)
-
-        # Time Based Feautures
-        Μean_Gyroscope.append(np.mean(train_gyroscope.iloc[w:end, feauture]))
-        STD_Gyroscope.append(np.std(train_gyroscope.iloc[w:end, feauture]))
-        Max_Gyroscope.append(np.max(train_gyroscope.iloc[w:end, feauture]))
-        Min_Gyroscope.append(np.min(train_gyroscope.iloc[w:end, feauture]))
-        Range_Gyroscope.append(np.ptp(train_gyroscope.iloc[w:end, 5]))
-
-        percentile = np.percentile(train_gyroscope.iloc[w:end, feauture], [25, 50, 75])
-        Percentile25_Gyroscope.append(percentile[0])
-        Percentile50_Gyroscope.append(percentile[1])
-        Percentile75_Gyroscope.append(percentile[2])
-        Entropy_Gyroscope.append(entropy(train_gyroscope.iloc[w:end, feauture], base = 2))
-
-        Kurtosis_Gyroscope.append(kurtosis(train_gyroscope.iloc[w:end, feauture]))
-        Skewness_Gyroscope.append(skew(train_gyroscope.iloc[w:end, feauture]))
-
-        # Output Label
-        list_y_Gyroscope.append(1)
-
-    # Create test dataset for accelerometer
-    for w in range(0, len(test) - samples, overlap):
-        end = w + samples 
-
-        #DFT
-        discreteFourier = fft(test.iloc[w:end, feauture])
-        # Frequencies
-        freq = np.fft.fftfreq(samples)
-
-        # Amplitudes
-        idx = (np.absolute(discreteFourier)).argsort()[-2:][::-1]
-        amplitude1 = np.absolute(discreteFourier[idx[0]])
-        amplitude2 = np.absolute(discreteFourier[idx[1]])
-        frequency2 = freq[idx[1]]
-
-        # Frequency features
-        mean_frequency = np.mean(freq)
-        Amplitude1.append(amplitude1)
-        Amplitude2.append(amplitude2)
-        Frequency2.append(frequency2)
-        Mean_frequency.append(mean_frequency)
-
-        # Time Based Feautures
-        Μean.append(np.mean(test.iloc[w:end, feauture]))
-        STD.append(np.std(test.iloc[w:end, feauture]))
-        Max.append(np.max(test.iloc[w:end, feauture]))
-        Min.append(np.min(test.iloc[w:end, feauture]))
-        Range.append(np.ptp(test.iloc[w:end, feauture].to_numpy()))
-
-        percentile = np.percentile(test.iloc[w:end, feauture], [25, 50, 75])
-        Percentile25.append(percentile[0])
-        Percentile50.append(percentile[1])
-        Percentile75.append(percentile[2])
-        Entropy.append(entropy(test.iloc[w:end, feauture], base=2))
-
-        Kurtosis.append(kurtosis(test.iloc[w:end, feauture]))
-        Skewness.append(skew(test.iloc[w:end, feauture]))
-
-        # Output Label
-        list_y.append(-1)
-
-    
-    # Create test dataset for gyroscope
-    for w in range(0, test_gyroscope.shape[0] - samples, overlap):
-        end = w + samples 
-
-        #DFT
-        discreteFourier = fft(test_gyroscope.iloc[w:end, feauture])
-        # Frequencies
-        freq = np.fft.fftfreq(samples)
-
-        # Amplitudes
-        idx = (np.absolute(discreteFourier)).argsort()[-2:][::-1]
-        amplitude1 = np.absolute(discreteFourier[idx[0]])
-        amplitude2 = np.absolute(discreteFourier[idx[1]])
-        frequency2 = freq[idx[1]]
-
-        # Frequency features
-        mean_frequency = np.mean(freq)
-        Amplitude1_Gyroscope.append(amplitude1)
-        Amplitude2_Gyroscope.append(amplitude2)
-        Frequency2_Gyroscope.append(frequency2)
-        Mean_frequency_Gyroscope.append(mean_frequency)
-
-        # Time Based Feautures
-        Μean_Gyroscope.append(np.mean(test_gyroscope.iloc[w:end, feauture]))
-        STD_Gyroscope.append(np.std(test_gyroscope.iloc[w:end, feauture]))
-        Max_Gyroscope.append(np.max(test_gyroscope.iloc[w:end, feauture]))
-        Min_Gyroscope.append(np.min(test_gyroscope.iloc[w:end, feauture]))
-        Range_Gyroscope.append(np.ptp(test_gyroscope.iloc[w:end, feauture].to_numpy()))
-
-        percentile = np.percentile(test_gyroscope.iloc[w:end, feauture], [25, 50, 75])
-        Percentile25_Gyroscope.append(percentile[0])
-        Percentile50_Gyroscope.append(percentile[1])
-        Percentile75_Gyroscope.append(percentile[2])
-        Entropy_Gyroscope.append(entropy(test_gyroscope.iloc[w:end, feauture], base = 2))
-
-        Kurtosis_Gyroscope.append(kurtosis(test_gyroscope.iloc[w:end, feauture]))
-        Skewness_Gyroscope.append(skew(test_gyroscope.iloc[w:end, feauture]))
-
-        # Output Label
-        list_y_Gyroscope.append(-1)
-    
     # =============================================================================
     # Machine Learning Models
     # ============================================================================= 
 
     # Add features to dataframe
-    df['Mean'] = Μean 
-    df['Std'] = STD
-    df['Skew'] = Skewness
-    df['Kurtosis'] = Kurtosis
-    df['Max'] = Max
-    df['Min'] = Min
+    df['Mean'] = accelerometerFeatures.getMean() 
+    df['Std'] = accelerometerFeatures.getSTD()
+    df['Skew'] = accelerometerFeatures.getSkewness()
+    df['Kurtosis'] = accelerometerFeatures.getKurtosis()
+    df['Max'] = accelerometerFeatures.getMax()
+    df['Min'] = accelerometerFeatures.getMin()
     #df['Range'] = Range
-    df['Percentile25'] = Percentile25
-    df['Percentile50'] = Percentile50
-    df['Percentile75'] = Percentile75
+    df['Percentile25'] = accelerometerFeatures.getPercentile25()
+    df['Percentile50'] = accelerometerFeatures.getPercentile50()
+    df['Percentile75'] = accelerometerFeatures.getPercentile75()
     #df['Entropy'] = Entropy
 
-    df['Amplitude1'] = Amplitude1
-    df['Amplitude2'] = Amplitude2
-    df['Frequency'] = Frequency2
-    df['MeanFrequency'] = Mean_frequency
+    df['Amplitude1'] = accelerometerFeatures.getAmplitude1()
+    df['Amplitude2'] = accelerometerFeatures.getAmplitude2()
+    df['Frequency'] = accelerometerFeatures.getFrequency2()
+    df['MeanFrequency'] = accelerometerFeatures.getMean_frequency()
 
-    df_gyroscope['Mean_Gyroscope'] = Μean_Gyroscope
-    df_gyroscope['Std_Gyroscope'] = STD_Gyroscope
-    df_gyroscope['Skew_Gyroscope'] = Skewness_Gyroscope
-    df_gyroscope['Kurtosis_Gyroscope'] = Kurtosis_Gyroscope
-    df_gyroscope['Max_Gyroscope'] = Max_Gyroscope
-    df_gyroscope['Min_Gyroscope'] = Min_Gyroscope
+    df_gyroscope['Mean_Gyroscope'] = gyroscopeFeatures.getMean()
+    df_gyroscope['Std_Gyroscope'] = gyroscopeFeatures.getSTD()
+    df_gyroscope['Skew_Gyroscope'] = gyroscopeFeatures.getSkewness()
+    df_gyroscope['Kurtosis_Gyroscope'] = gyroscopeFeatures.getKurtosis()
+    df_gyroscope['Max_Gyroscope'] = gyroscopeFeatures.getMax()
+    df_gyroscope['Min_Gyroscope'] = gyroscopeFeatures.getMin()
     #df_gyroscope['Range_Gyroscope'] = Range_Gyroscope
-    df_gyroscope['Percentile25_Gyroscope'] = Percentile25_Gyroscope
-    df_gyroscope['Percentile50_Gyroscope'] = Percentile50_Gyroscope
-    df_gyroscope['Percentile75_Gyroscope'] = Percentile75_Gyroscope
+    df_gyroscope['Percentile25_Gyroscope'] = gyroscopeFeatures.getPercentile25()
+    df_gyroscope['Percentile50_Gyroscope'] = gyroscopeFeatures.getPercentile50()
+    df_gyroscope['Percentile75_Gyroscope'] = gyroscopeFeatures.getPercentile75()
     #df_gyroscope['Entropy_Gyroscope'] = Entropy_Gyroscope
 
-    df_gyroscope['Amplitude1_Gyroscope'] = Amplitude1_Gyroscope
-    df_gyroscope['Amplitude2_Gyroscope'] = Amplitude2_Gyroscope
-    df_gyroscope['Frequency_Gyroscope'] = Frequency2_Gyroscope
-    df_gyroscope['MeanFrequency_Gyroscope'] = Mean_frequency_Gyroscope
+    df_gyroscope['Amplitude1_Gyroscope'] = gyroscopeFeatures.getAmplitude1()
+    df_gyroscope['Amplitude2_Gyroscope'] = gyroscopeFeatures.getAmplitude2()
+    df_gyroscope['Frequency_Gyroscope'] = gyroscopeFeatures.getFrequency2()
+    df_gyroscope['MeanFrequency_Gyroscope'] = gyroscopeFeatures.getMean_frequency()
 
-    df['y'] = list_y
-    df_gyroscope['y_gyroscope'] = list_y_Gyroscope
+    df['y'] = accelerometerFeatures.getY()
+    df_gyroscope['y_gyroscope'] = gyroscopeFeatures.getY()
 
     train =  pd.DataFrame(df[df['y'] == 1])
     test =  pd.DataFrame(df[df['y'] == -1])
