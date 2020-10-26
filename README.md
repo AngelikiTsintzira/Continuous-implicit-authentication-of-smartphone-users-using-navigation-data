@@ -68,9 +68,9 @@ The data received from the motion sensors are of the form (x, y, z, screen), whe
 
 The dataset, for each user, consists of an unknown number of JSON files. Each JSON file is also a timestamp, during which the data was collected. In addition to the values x, y, z, their derivatives are also calculated, such as the magnitude and the combined angle.
 
-![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/figures/Magnitude.png?raw=true)
+![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/blob/main/figures/Magnitude.png?raw=true)
 
-![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/figures/CombinedAngle.png?raw=true)
+![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/blob/main/figures/CombinedAngle.png?raw=true)
 
 To select the appropriate variable, experiments were performed with each variable (x, y, z, combined angle, magnitude) and at the end, the performance of the algorithms was compared. From the experiments, it emerged that the variable **magnitude** was the one with which, the models achieved the best performance.
 
@@ -80,9 +80,9 @@ During the exploration, visualization and processing techniques were used to bet
 
 An example of 14 users for dimensions Y and Z are shown below. It is clear that there is a distinction between users' behaviour.
 
-![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/figures/Y_axis.png?raw=true)
+![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/blob/main/figures/Y_axis.png?raw=true)
 
-![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/figures/Z_axis.png?raw=true)
+![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/blob/main/figures/Z_axis.png?raw=true)
 
 ## Segmentation - Sliding Window
 
@@ -124,7 +124,7 @@ For Hyperparameter Tuning, the Cross-Validation technique was applied in combina
 
 The Hyperparameter Tuning procedure is shown below.
 
-![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/figures/HyperParameterTuning.png?raw=true)
+![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/blob/main/figures/HyperParameterTuning.png?raw=true)
 
 The following steps were applied:
 - For each user
@@ -143,7 +143,7 @@ Ensemble learning improves the overall accuracy of the system by combining 2 or 
 
 Ensemble Learning is shown below.
 
-![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/figures/EnsembleModels.png?raw=true)
+![Combine Angle and Magnitude Dimensions](https://github.com/AngelikiTsintzira/Continuous-implicit-authentication-of-smartphone-users-using-navigation-data/blob/main/figures/EnsembleModels.png?raw=true)
 
 Initially, the data of the 2 sensors (gyroscope and accelerometer) must be identical in time, ie each recording of the accelerometer must correspond to one recording of the gyroscope at the same time. Unidentified samples were discarded. The result of the above processing is 2 different datasets, which consist of the same set of data with measurements from the 2 sensors (one contains measurements from the accelerometer, while the other from the gyroscope) at the same time. The next step is the training of the 2 models. Each is trained separately with the corresponding dataset. The results are combined using the decision_function function. The decision_function function predicts the confidence (probability) scores for each sample. The confidence score for a sample is the distance of that sample from the separation surface. When its value for a sample is positive, it means that this sample belongs to the class of the real user, ie the positive class, while when its value for a sample is negative, it means that this sample is an extreme value, therefore it is classified as a malicious or unauthorized user. During the training process, the distance of each sample from the separation surface is calculated and the maximum distance for each model is found. Then, after completing the prediction process, divide the distance of each sample by the maximum distance calculated in the training and what emerges is a good estimate of the probability that the investigated sample belongs to the class of the actual user or to the class of the malicious user. Once the execution of the 2 models is completed, the process of combining the results of the models follows. During the combination, for each sample, the above estimate from the 2 models is added and if the sum value is positive the sample is categorized as a real user otherwise as a malicious user.
 
