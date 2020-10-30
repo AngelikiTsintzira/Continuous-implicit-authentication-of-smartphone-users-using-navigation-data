@@ -112,6 +112,8 @@ For this project, the final features that were chosen are shown below. From the 
 | P2  | Amplitude of the second highest peak  | Frequency  |
 | Mean Frequency  | Mean value of frequencies  | Frequency  |
 
+Once the feature vector is finished, I used normalization to transform data into [0,1]. Normalization is a rescaling of the data from the original range so that all values are within the new range of 0 and 1. Normalization is very important when we use machine learning algorithms based on distance. The scale of the data matters and data that are on a higher scale than others may contribute to the result more due to their larger value. So we normalize the data to bring all the variables to the same range.
+
 ## Training Algorithms
 
 I used 4 Novelty Detection Algorithms:

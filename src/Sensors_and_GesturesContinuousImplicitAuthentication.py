@@ -146,6 +146,267 @@ def FeatureExtraction(dataset, samples, overlap, output, feautureObject):
         feautureObject.setY(output)
 
     return  feautureObject
+
+# This function calculates average metrics per model. (FAR, FRR, Confucion Matrix, Accuracy and F1-Score)
+def PerformanceMetrics(users, model, text):
+
+    accuracy_average = 0
+    f1score_average = 0
+    far_average = 0
+    frr_average = 0
+    roc_average = 0
+    for i in range(0, len(users)):
+        accuracy_average = accuracy_average + model.getAccuracy()[i]
+        f1score_average = f1score_average +  model.getf1score()[i] 
+        far_average = far_average +  model.getFAR()[i]
+        frr_average = frr_average +  model.getFRR()[i]
+
+    print()
+    print('AVERAGE ONE CLASS SVM PERFORMANCE MODEL: ' + text)
+    print('Accuracy: ', accuracy_average / len(users), '\nF1 Score: ', f1score_average / len(users), '\nFAR: ', far_average / len(users), '\nFRR: ', frr_average / len(users))
+    sumTest = sum(model.getsizeTest())
+    sumFalseAccept = sum(model.getfalseAccept())
+    sumFalseReject = sum(model.getfalseReject())
+    sumTrueAccept = sum(model.gettrueAccept())
+    sumTrueReject = sum(model.gettrueReject())
+    print('Confusion Matrix')
+    print(sumTrueReject, ' ',  sumFalseAccept)
+    print(sumFalseReject, ' ',  sumTrueAccept)
+
+
+# Local Outlier Factor Algorithm Execution
+def LocalOutlierFactorAlgorithm(parameters, X_train, X_test):
+
+    model = LocalOutlierFactor(n_neighbors = parameters[0], novelty = True)
+    model.fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# Elliptic Envelope Algorithm Execution
+def EllipticEnvelopeAlgorithm(parameters, X_train, X_test):
+
+    model = EllipticEnvelope(contamination = parameters[0]).fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# Isolation Forest Algorithm Execution
+def IsolationForestAlgorithm(parameters, X_train, X_test):
+
+    model = IsolationForest(n_jobs = -1, n_estimators = parameters[0], contamination = parameters[1], bootstrap = False).fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# One Class SVM Algorithm Execution
+def OneClassSVMAlgorithm(parameters, X_train, X_test):
+
+    model = svm.OneClassSVM(gamma = parameters[0], kernel = 'rbf', nu = parameters[1], cache_size = 500)
+    model.fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# This function executed the Machine Learning Algorithm
+def AlgorithmExecution(trainData, testData, algorithm, parameters, text, model):
+
+    # Split Dataset in a random way 
+    percent = int(math.ceil(0.2 * trainData.shape[0]))
+    sampling = trainData.sample(n = percent)
+        
+    indecies = []
+    for ii in range(0, percent):
+        indecies.append(sampling.iloc[ii,:].name)
+
+    test = pd.concat([testData, sampling])
+    train = trainData.drop(trainData.index[indecies])
+
+    X_train = train.iloc[:,0:test.shape[1]-2]
+    y_train = train.iloc[:,test.shape[1]-1 ]
+
+    X_test = test.iloc[:,0:test.shape[1]-2]
+    y_test = test.iloc[:,test.shape[1]-1]
+
+    print('After Split Sizes:')
+    print('Train Size One Class: ', X_train.shape[0], 'Test Size Two Class: ', y_test.shape[0])
+
+    # MinMaxScaler Normalized to [0,1]
+    scaler = MinMaxScaler().fit(X_train)
+    X_train_norm = scaler.transform(X_train)
+    X_test_norm = scaler.transform(X_test)
+
+    # Call the appropriate algorithm, loop throught the functions, find the desired algorithm and execute it
+    functions = (LocalOutlierFactorAlgorithm, EllipticEnvelopeAlgorithm, IsolationForestAlgorithm, OneClassSVMAlgorithm)
+    for func in functions:
+        functionName = func.__name__
+        if algorithm in functionName:
+            decision, prediction = func(parameters, X_train_norm, X_test_norm)
+        
+    print("******************************* Model " + text + " *******************************")
+    score = f1_score(y_test, prediction, pos_label = 1)
+    #print('F1 Score: %.3f' % score)
+    acc = accuracy_score(y_test, prediction)
+    #print(f'SVM accuracy is {acc}')
+    cfm = confusion_matrix(y_test, prediction, labels = [-1, 1])
+    print(cfm)
+    np.sum(y_test == -1)
+    far = cfm[0,1]/ np.sum(y_test == -1)
+    frr = cfm[1,0]/ np.sum(y_test == 1)
+    print('FAR: ', far, ' FFR: ', frr)
+    
+    model.setFAR(far)
+    model.setFRR(frr)
+    model.setAccuracy(acc)
+    model.setf1score(score)
+    model.setfalseAccept(cfm[0,1])
+    model.setfalseReject(cfm[1,0])
+    model.settrueAccept(cfm[1,1])
+    model.settrueReject(cfm[0,0])
+    model.setsizeTest(y_test.shape[0])
+
+    # AUC represents the probability that a random positive (green) example is positioned to the right of a random negative (red) example.
+    roc = roc_auc_score(y_test, prediction)
+    #print('ROC AUC Score: ',roc)
+
+    return decision, model, y_test
+# Local Outlier Factor Algorithm Execution
+def LocalOutlierFactorAlgorithm(parameters, X_train, X_test):
+
+    model = LocalOutlierFactor(n_neighbors = parameters[0], novelty = True)
+    model.fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# Elliptic Envelope Algorithm Execution
+def EllipticEnvelopeAlgorithm(parameters, X_train, X_test):
+
+    model = EllipticEnvelope(contamination = parameters[0]).fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# Isolation Forest Algorithm Execution
+def IsolationForestAlgorithm(parameters, X_train, X_test):
+
+    model = IsolationForest(n_jobs = -1, n_estimators = parameters[0], contamination = parameters[1], bootstrap = False).fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# One Class SVM Algorithm Execution
+def OneClassSVMAlgorithm(parameters, X_train, X_test):
+
+    model = svm.OneClassSVM(gamma = parameters[0], kernel = 'rbf', nu = parameters[1], cache_size = 500)
+    model.fit(X_train)
+    decision = model.decision_function(X_train)
+    maxDistance = max(decision) 
+    prediction = model.predict(X_test)
+
+    decision = model.decision_function(X_test)
+    decision = decision /maxDistance
+
+    return decision, prediction
+
+# This function executed the Machine Learning Algorithm
+def AlgorithmExecution(trainData, testData, algorithm, parameters, text, model):
+
+    # Split Dataset in a random way 
+    percent = int(math.ceil(0.2 * trainData.shape[0]))
+    sampling = trainData.sample(n = percent)
+        
+    indecies = []
+    for ii in range(0, percent):
+        indecies.append(sampling.iloc[ii,:].name)
+
+    test = pd.concat([testData, sampling])
+    train = trainData.drop(trainData.index[indecies])
+
+    X_train = train.iloc[:,0:test.shape[1]-2]
+    y_train = train.iloc[:,test.shape[1]-1 ]
+
+    X_test = test.iloc[:,0:test.shape[1]-2]
+    y_test = test.iloc[:,test.shape[1]-1]
+
+    print('After Split Sizes:')
+    print('Train Size One Class: ', X_train.shape[0], 'Test Size Two Class: ', y_test.shape[0])
+
+    # MinMaxScaler Normalized to [0,1]
+    scaler = MinMaxScaler().fit(X_train)
+    X_train_norm = scaler.transform(X_train)
+    X_test_norm = scaler.transform(X_test)
+
+    # Call the appropriate algorithm, loop throught the functions, find the desired algorithm and execute it
+    functions = (LocalOutlierFactorAlgorithm, EllipticEnvelopeAlgorithm, IsolationForestAlgorithm, OneClassSVMAlgorithm)
+    for func in functions:
+        functionName = func.__name__
+        if algorithm in functionName:
+            decision, prediction = func(parameters, X_train_norm, X_test_norm)
+        
+    print("******************************* Model " + text + " *******************************")
+    score = f1_score(y_test, prediction, pos_label = 1)
+    #print('F1 Score: %.3f' % score)
+    acc = accuracy_score(y_test, prediction)
+    #print(f'SVM accuracy is {acc}')
+    cfm = confusion_matrix(y_test, prediction, labels = [-1, 1])
+    print(cfm)
+    np.sum(y_test == -1)
+    far = cfm[0,1]/ np.sum(y_test == -1)
+    frr = cfm[1,0]/ np.sum(y_test == 1)
+    print('FAR: ', far, ' FFR: ', frr)
+    
+    model.setFAR(far)
+    model.setFRR(frr)
+    model.setAccuracy(acc)
+    model.setf1score(score)
+    model.setfalseAccept(cfm[0,1])
+    model.setfalseReject(cfm[1,0])
+    model.settrueAccept(cfm[1,1])
+    model.settrueReject(cfm[0,0])
+    model.setsizeTest(y_test.shape[0])
+
+    # AUC represents the probability that a random positive (green) example is positioned to the right of a random negative (red) example.
+    roc = roc_auc_score(y_test, prediction)
+    #print('ROC AUC Score: ',roc)
+
+    return decision, model, y_test
+
 # =============================================================================
 # Load Dataset and Create Panda Dataframes
 # =============================================================================
@@ -423,247 +684,46 @@ for user in users:
 
     print('After Sampling Sizes\n','Train Size One Class: ', train.shape[0], 'Test Size Two Class: ', test.shape[0])
     
-    Far1 = []
-    Far2 = []
-    Far3 = []
-    
-    Frr1 = []
-    Frr2 = []
-    Frr3 = []
-    
-    ac1 = []
-    ac2 = []
-    ac3 = []
-    
-    f11 = []
-    f12 = []
-    f13 = []
-    
-    ROC11 = []
-    ROC12 = []
-    ROC13 = []
-    
-    fA1 = []
-    fA2 = []
-    fA3 = []
-    
-    FR1 = []
-    FR2 = []
-    FR3 = []
-    
-    TA1 = []
-    TA2 = []
-    TA3 = []
-    
-    TR1 = []
-    TR2 = []
-    TR3 = []
-    
-    testSize1 = []
-    testSize2 = []
-    testSize3 = []
-    
     trainStarter = train
     testStarter = test
     
-    print(trainStarter.columns)
-    
     trainStarter_gyroscope = train_gyroscope
     testStarter_gyroscope = test_gyroscope
+
+    accelerometerModelUser = Metrics()
+    gyroscopeModelUser = Metrics()
+    ensembleModelUser = Metrics()
     
     # 10 Executions per original user
     for fold in range(0,10):
 
-        ######################################## MODEL 1 - Accelerometer ########################################
-
-        # Split Dataset in a random way
-        percent = int(math.ceil(0.2 * trainStarter.shape[0]))
-        sampling = trainStarter.sample(n = percent)
-        
-        indecies = []
-        for ii in range(0, percent):
-            indecies.append(sampling.iloc[ii,:].name)
-
-        test = pd.concat([testStarter, sampling])
-        train = trainStarter.drop(trainStarter.index[indecies])
-
-        X_train = train.iloc[:,0:test.shape[1]-2]
-        y_train = train.iloc[:,test.shape[1]-1 ]
-
-        X_test = test.iloc[:,0:test.shape[1]-2]
-        y_test = test.iloc[:,test.shape[1]-1]
-
-        print('After Split Sizes:')
-        print('Train Size One Class: ', X_train.shape[0], 'Test Size Two Class: ', y_test.shape[0])
-
-        # MinMaxScaler Normalized to [0,1]
-        scaler = MinMaxScaler().fit(X_train)
-        X_train_norm = scaler.transform(X_train)
-        X_test_norm = scaler.transform(X_test)
-        
-        model1 = LocalOutlierFactor(n_neighbors = 3, novelty = True)
-        model1.fit(X_train_norm)
-        decision1 = model1.decision_function(X_train_norm)
-        maxDistance = max(decision1) 
-        yhat1 = model1.predict(X_test_norm)
-        
+        # =============================================================================
+        # Best Hyper-Parameters values for Model 1 - Accelerometer
+        # ============================================================================= 
         '''
-        model1 = LocalOutlierFactor(n_neighbors = 3, novelty = True)
-        model1.fit(X_train_norm)
-        decision1 = model1.decision_function(X_train_norm)
-        maxDistance = max(decision1) 
-        yhat1 = model1.predict(X_test_norm)
-        
-        model1 = EllipticEnvelope(contamination = 0).fit(X_train_norm)
-        decision1 = model1.decision_function(X_train_norm)
-        maxDistance = max(decision1) 
-        yhat1 = model1.predict(X_test_norm)
-        
-        model1 = IsolationForest(n_jobs = -1, n_estimators = 100, contamination = 0, bootstrap = False).fit(X_train_norm)
-        decision1 = model1.decision_function(X_train_norm)
-        maxDistance = max(decision1) 
-        yhat1 = model1.predict(X_test_norm)
-
-        # auto einai t teleutaio
-        model1 = svm.OneClassSVM(gamma = 0.1, kernel="rbf", nu = 0.01, cache_size = 500)
-        # fit on majority class
-        model1.fit(X_train_norm)
-
-        decision1 = model1.decision_function(X_train_norm)
-        maxDistance = max(decision1) 
-        #print('-------- Distance Max: ', maxDistance)
-        
-        # detect outliers in the test set
-        yhat1 = model1.predict(X_test_norm)
-        '''
-        decision1 = model1.decision_function(X_test_norm)
-        decision1 = decision1 /maxDistance
-        #print('-------- Probability: ', decision1)
-
-        print("******************************* First Model *******************************")
-        #print("User: ", user)
-        # mark inliers 1, outliers -1
-        score = f1_score(y_test, yhat1, pos_label= 1)
-        #print('F1 Score: %.3f' % score)
-        acc = accuracy_score(y_test, yhat1)
-        #print(f'SVM accuracy is {acc}')
-        cfm = confusion_matrix(y_test, yhat1, labels = [-1, 1])
-        print(cfm)
-        np.sum(y_test == -1)
-        far = cfm[0,1]/ np.sum(y_test == -1)
-        frr = cfm[1,0]/ np.sum(y_test == 1)
-        print('FAR: ', far, ' FFR: ', frr)
-        
-        Far1.append(far)
-        Frr1.append(frr)
-        ac1.append(acc)
-        f11.append(score)
-        fA1.append(cfm[0,1])
-        FR1.append(cfm[1,0])
-        TA1.append(cfm[1,1])
-        TR1.append(cfm[0,0])
-        testSize1.append(y_test.shape[0])
-
-        # AUC represents the probability that a random positive (green) example is positioned to the right of a random negative (red) example.
-        roc = roc_auc_score(y_test, yhat1)
-        #print('ROC AUC Score: ',roc)
-
-        ######################################## MODEL 2 - Gyroscope ########################################
-        
-        print('After Sampling Sizes Gyroscope \n','Train Size One Class: ', train_gyroscope.shape[0], 'Test Size Two Class: ', test_gyroscope.shape[0])
-
-        percent = int(math.ceil(0.2 * trainStarter_gyroscope.shape[0]))
-        sampling = trainStarter_gyroscope.sample(n = percent) 
-        
-        indecies = []
-        for ii in range(0, percent):
-            indecies.append(sampling.iloc[ii,:].name)
-            
-        test_gyroscope = pd.concat([testStarter_gyroscope, sampling])
-        train_gyroscope = trainStarter_gyroscope.drop(trainStarter_gyroscope.index[indecies])
-
-        X_train = train_gyroscope.iloc[:,0:test_gyroscope.shape[1]-2]
-        y_train = train_gyroscope.iloc[:,test_gyroscope.shape[1]-1 ]
-
-        X_test = test_gyroscope.iloc[:,0:test_gyroscope.shape[1]-2]
-        y_test = test_gyroscope.iloc[:,test_gyroscope.shape[1]-1]
-        
-        print('After Split Sizes:')
-        print('Train Size One Class: ', X_train.shape[0], 'Test Size Two Class: ', y_test.shape[0])
-
-        # MinMaxScaler Normalized to [0,1]
-        scaler = MinMaxScaler().fit(X_train)
-        X_train_norm = scaler.transform(X_train)
-        X_test_norm = scaler.transform(X_test)
-
-        model2 = LocalOutlierFactor(n_neighbors = 5, novelty = True)
-        model2.fit(X_train_norm)
-        decision2 = model2.decision_function(X_train_norm)
-        maxDistance = max(decision2) 
-        yhat2 = model2.predict(X_test_norm)
-
-        '''
-        model2 = LocalOutlierFactor(n_neighbors = 5, novelty = True)
-        model2.fit(X_train_norm)
-        decision2 = model2.decision_function(X_train_norm)
-        maxDistance = max(decision2) 
-        yhat2 = model2.predict(X_test_norm)
-
-        model2 = EllipticEnvelope(contamination = 0).fit(X_train_norm)
-        decision2 = model2.decision_function(X_train_norm)
-        maxDistance = max(decision2) 
-        yhat2 = model2.predict(X_test_norm)   
-        
-        model2 = IsolationForest(n_jobs = -1, n_estimators = 100, max_features = 1, contamination = 0, bootstrap = False).fit(X_train_norm)
-        decision2 = model2.decision_function(X_train_norm)
-        maxDistance = max(decision2) 
-        yhat2 = model2.predict(X_test_norm)
-        
-        # One class SVM last
-        model2 = svm.OneClassSVM(gamma = 0.001, kernel="rbf", nu = 0.1, cache_size = 500)
-        # fit on majority class
-        model2.fit(X_train_norm)
-
-        decision2 = model2.decision_function(X_train_norm)
-        maxDistance = max(decision2)  
-        #print('-------- Distance Max: ', maxDistance)
-
-        # detect outliers in the test set
-        yhat2 = model2.predict(X_test_norm)
+        LocalOutlierFactor(n_neighbors = 3, novelty = True)
+        EllipticEnvelope(contamination = 0)
+        IsolationForest(n_jobs = -1, n_estimators = 100, contamination = 0, bootstrap = False)
+        svm.OneClassSVM(gamma = 0.1, kernel="rbf", nu = 0.01, cache_size = 500)
         '''
 
-        decision2 = model2.decision_function(X_test_norm)
-        decision2 = decision2 /maxDistance
-        #print('-------- Probability: ', decision2)
-    
-        print("******************************* Second Model *******************************")
-        #print("User: ", user)
-        # mark inliers 1, outliers -1
-        score = f1_score(y_test, yhat2, pos_label= 1)
-        #print('F1 Score: %.3f' % score)
-        acc = accuracy_score(y_test, yhat2)
-        #print(f'SVM accuracy is {acc}')
-        cfm = confusion_matrix(y_test, yhat2, labels = [-1, 1])
-        print(cfm)
-        np.sum(y_test == -1)
-        far = cfm[0,1]/ np.sum(y_test == -1)
-        frr = cfm[1,0]/ np.sum(y_test == 1)
-        print('FAR: ', far, ' FFR: ', frr)
-    
-        Far2.append(far)
-        Frr2.append(frr)
-        ac2.append(acc)
-        f12.append(score)
-        fA2.append(cfm[0,1])
-        FR2.append(cfm[1,0])
-        TA2.append(cfm[1,1])
-        TR2.append(cfm[0,0])
-        testSize2.append(y_test.shape[0])
+        # =============================================================================
+        # Best Hyper-Parameters values for Model 2 - Gyroscope
+        # ============================================================================= 
+        '''
+        LocalOutlierFactor(n_neighbors = 5, novelty = True)
+        EllipticEnvelope(contamination = 0)
+        IsolationForest(n_jobs = -1, n_estimators = 100, max_features = 1, contamination = 0, bootstrap = False)
+        svm.OneClassSVM(gamma = 0.001, kernel="rbf", nu = 0.1, cache_size = 500)
+        '''
+        decision1 = []  
+        decision2 = []
+        decision1, accelerometerModelUser, y_test= AlgorithmExecution(trainStarter, testStarter, "LocalOutlierFactor", [3], "Accelerometer", accelerometerModelUser)
+        decision2, gyroscopeModelUser, y_test = AlgorithmExecution(trainStarter_gyroscope, testStarter_gyroscope, "LocalOutlierFactor", [5], "Gyroscope", gyroscopeModelUser)
 
-        # AUC represents the probability that a random positive (green) example is positioned to the right of a random negative (red) example.
-        roc = roc_auc_score(y_test, yhat2)
-        #print('ROC AUC Score: ',roc)
-
+        # =============================================================================
+        # Enseble Models
+        # ============================================================================= 
         TP = 0
         TN = 0
         FP = 0
@@ -698,95 +758,78 @@ for user in users:
         frr = FN/ np.sum(y_test == 1)           
         print('FAR: ', far, ' FFR: ', frr)
         
-        Far3.append(far)
-        Frr3.append(frr)
+        ensembleModelUser.setfalseAccept(cfm[0,1])
+        ensembleModelUser.setfalseReject(cfm[1,0])
+        ensembleModelUser.settrueAccept(cfm[1,1])
+        ensembleModelUser.settrueReject(cfm[0,0])
+        ensembleModelUser.setsizeTest(y_test.shape[0])
+        ensembleModelUser.setAccuracy(acc)
+        ensembleModelUser.setFAR(far)
+        ensembleModelUser.setFRR(frr)
+        ensembleModelUser.setf1score(score)
         
-        ac3.append(acc)
-        f13.append(score)
-        fA3.append(cfm[0,1])
-        FR3.append(cfm[1,0])
-        TA3.append(cfm[1,1])
-        TR3.append(cfm[0,0])
-        testSize3.append(y_test.shape[0])
-        
-        decision1 = []
-        decision2 = []
-        
-    # Average of 10 runs
-    
+    # =============================================================================
+    # Average Performance per user (10-FOLD)
+    # =============================================================================     
     far = 0
     frr = 0
-    
     far1 = 0
     far2 = 0
     frr1 = 0
     frr2 = 0
-    
     accu = 0
     fscore = 0
-    
     accu1 = 0
     accu2 = 0
     fscore1 =0
     fscore2 = 0
-    
     FA = 0
     FalseR = 0
     TrueA = 0
     TrueR = 0
     testS = 0
-    
     FA1 = 0
     FA2 = 0
-    
     FalseR1 = 0
     FalseR2 = 0
-    
     TrueA1 = 0
     TrueA2 = 0
-    
     TrueR1 = 0
     TrueR2 = 0
-    
     testS1 = 0
     testS2 = 0
-    
+
     for index in range(0,10):
-        far = far + Far3[index]
-        frr = frr + Frr3[index]
-        
-        far1 = far1 + Far1[index]
-        far2 = far2 + Far2[index]
-        frr1 = frr1 + Frr1[index]
-        frr2 = frr2 + Frr2[index]
-        
-        accu = accu + ac3[index] 
-        accu1 = accu1 + ac1[index]
-        accu2 = accu2 + ac2[index]
-        
-        fscore = fscore + f13[index]
-        fscore1 = fscore1 + f11[index]
-        fscore2 = fscore1 + f12[index]
-    
-        FA = FA + fA3[index]
-        FA1 = FA1 + fA1[index]
-        FA2 = FA2 + fA2[index]
-        
-        FalseR = FalseR + FR3[index]
-        FalseR1 =  FalseR1 + FR1[index]
-        FalseR2 =  FalseR2 + FR2[index]
 
-        TrueA = TrueA + TA3[index]
-        TrueA1 = TrueA1 + TA1[index]
-        TrueA2 = TrueA1 + TA2[index]
+        far = far + ensembleModelUser.getFAR()[index]  
+        frr = frr + ensembleModelUser.getFRR()[index]  
+        accu = accu + ensembleModelUser.getAccuracy()[index]  
+        fscore = fscore + ensembleModelUser.getf1score()[index]
+        FA = FA + ensembleModelUser.getfalseAccept()[index]
+        FalseR = FalseR + ensembleModelUser.getfalseReject()[index]
+        TrueA = TrueA + ensembleModelUser.gettrueAccept()[index]
+        TrueR = TrueR + ensembleModelUser.gettrueReject()[index]
+        testS = testS + ensembleModelUser.getsizeTest()[index]
 
-        TrueR = TrueR + TR3[index]
-        TrueR1 = TrueR1 + TR1[index]
-        TrueR2 = TrueR1 + TR2[index]
-        
-        testS = testS + testSize3[index]
-        testS1 = testS1 + testSize1[index]
-        testS2 = testS2 + testSize2[index]
+        far1 = far1 + accelerometerModelUser.getFAR()[index]
+        frr1 = frr1 + accelerometerModelUser.getFRR()[index]
+        accu1 = accu1 + accelerometerModelUser.getAccuracy()[index]
+        fscore1 = fscore1 + accelerometerModelUser.getf1score()[index]
+        FA1 = FA1 + accelerometerModelUser.getfalseAccept()[index]
+        FalseR1 =  FalseR1 + accelerometerModelUser.getfalseReject()[index]
+        TrueA1 = TrueA1 + accelerometerModelUser.gettrueAccept()[index]
+        TrueR1 = TrueR1 + accelerometerModelUser.gettrueReject()[index]
+        testS1 = testS1 + accelerometerModelUser.getsizeTest()[index]
+
+        far2 = far2 + gyroscopeModelUser.getFAR()[index]
+        frr2 = frr2 + gyroscopeModelUser.getFRR()[index]
+        accu2 = accu2 + gyroscopeModelUser.getAccuracy()[index]
+        fscore2 = fscore1 + gyroscopeModelUser.getf1score()[index]
+        FA2 = FA2 +  gyroscopeModelUser.getfalseAccept()[index]
+        FalseR2 =  FalseR2 + gyroscopeModelUser.getfalseReject()[index]
+        TrueA2 = TrueA1 +  gyroscopeModelUser.gettrueAccept()[index]
+        TrueR2 = TrueR1 +  gyroscopeModelUser.gettrueReject()[index]
+        testS2 = testS2 +  gyroscopeModelUser.getsizeTest()[index]
      
     accelerometerModel.setAccuracy(accu1/10)
     accelerometerModel.setf1score(fscore1/10)
@@ -821,74 +864,6 @@ for user in users:
 # =============================================================================
 # Performance Evaluation
 # ============================================================================= 
-# Final System Metrics        
-accuracy_average = 0
-f1score_average = 0
-far_average = 0
-frr_average = 0
-roc_average = 0
-for i in range(0, len(users)):
-    accuracy_average = accuracy_average + accelerometerModel.getAccuracy()[i]
-    f1score_average = f1score_average +  accelerometerModel.getf1score()[i] 
-    far_average = far_average +  accelerometerModel.getFAR()[i]
-    frr_average = frr_average +  accelerometerModel.getFRR()[i]
-
-print()
-print('AVERAGE ONE CLASS SVM PERFORMANCE MODEL 1:')
-print('Accuracy: ', accuracy_average / len(users), '\nF1 Score: ', f1score_average / len(users), '\nFAR: ', far_average / len(users), '\nFRR: ', frr_average / len(users))
-sumTest = sum(accelerometerModel.getsizeTest())
-sumFalseAccept = sum(accelerometerModel.getfalseAccept())
-sumFalseReject = sum(accelerometerModel.getfalseReject())
-sumTrueAccept = sum(accelerometerModel.gettrueAccept())
-sumTrueReject = sum(accelerometerModel.gettrueReject())
-print('Confusion Matrix')
-print(sumTrueReject, ' ',  sumFalseAccept)
-print(sumFalseReject, ' ',  sumTrueAccept)
-
-print('**********************************************************************')
-accuracy_average = 0
-f1score_average = 0
-far_average = 0
-frr_average = 0
-roc_average = 0
-for i in range(0, len(users)):
-    accuracy_average = accuracy_average + gyroscopeModel.getAccuracy()[i]
-    f1score_average = f1score_average +  gyroscopeModel.getf1score()[i] 
-    far_average = far_average +  gyroscopeModel.getFAR()[i]
-    frr_average = frr_average +  gyroscopeModel.getFRR()[i]
-
-print()
-print('AVERAGE ONE CLASS SVM PERFORMANCE MODEL 2:')
-print('Accuracy: ', accuracy_average / len(users), '\nF1 Score: ', f1score_average / len(users), '\nFAR: ', far_average / len(users), '\nFRR: ', frr_average / len(users))
-sumTest = sum(gyroscopeModel.getsizeTest())
-sumFalseAccept = sum(gyroscopeModel.getfalseAccept())
-sumFalseReject = sum(gyroscopeModel.getfalseReject())
-sumTrueAccept = sum(gyroscopeModel.gettrueAccept())
-sumTrueReject = sum(gyroscopeModel.gettrueReject())
-print('Confusion Matrix')
-print(sumTrueReject, ' ',  sumFalseAccept)
-print(sumFalseReject, ' ',  sumTrueAccept)
-
-print('**********************************************************************')
-accuracy_average = 0
-f1score_average = 0
-far_average = 0
-frr_average = 0
-roc_average = 0
-for i in range(0, len(users)):
-    accuracy_average = accuracy_average + ensembleModel.getAccuracy()[i]
-    f1score_average = f1score_average +  ensembleModel.getf1score()[i] 
-    far_average = far_average +  ensembleModel.getFAR()[i]
-    frr_average = frr_average +  ensembleModel.getFRR()[i]
-
-print()
-print('AVERAGE ONE CLASS SVM PERFORMANCE ENSEMBLE:')
-print('Accuracy: ', accuracy_average / len(users), '\nF1 Score: ', f1score_average / len(users), '\nFAR: ', far_average / len(users), '\nFRR: ', frr_average / len(users))
-sumTest = sum(ensembleModel.getsizeTest())
-sumFalseAccept = sum(ensembleModel.getfalseAccept())
-sumFalseReject = sum(ensembleModel.getfalseReject())
-sumTrueAccept = sum(ensembleModel.gettrueAccept())
-sumTrueReject = sum(ensembleModel.gettrueReject())
-print('Confusion Matrix')
-print(sumTrueReject, ' ',  sumFalseAccept)
-print(sumFalseReject, ' ',  sumTrueAccept)
+PerformanceMetrics(users, accelerometerModel, "ACCELEROMETER")
+PerformanceMetrics(users, gyroscopeModel, "GYROSCOPE")
+PerformanceMetrics(users, ensembleModel, "ENSEMLBE")
