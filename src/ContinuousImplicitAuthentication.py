@@ -97,13 +97,12 @@ from features import Features
 # =============================================================================
 
 # This function extract features with the method sliding window.
-def FeatureExtraction(dataset, samples, overlap, output, feautureObject):
+def FeatureExtraction(dataset, samples, overlap, output, feautureObject, feature):
 
     for w in range(0, dataset.shape[0] - samples, overlap):
         end = w + samples 
-
         #DFT
-        discreteFourier = fft(dataset.iloc[w:end, feauture])
+        discreteFourier = fft(dataset.iloc[w:end, feature])
         # Frequencies
         freq = np.fft.fftfreq(samples)
 
@@ -121,20 +120,20 @@ def FeatureExtraction(dataset, samples, overlap, output, feautureObject):
         feautureObject.setMean_frequency(mean_frequency)
 
         # Time Based Feautures
-        feautureObject.setΜean(np.mean(dataset.iloc[w:end, feauture]))
-        feautureObject.setSTD(np.std(dataset.iloc[w:end, feauture]))
-        feautureObject.setMax(np.max(dataset.iloc[w:end, feauture]))
-        feautureObject.setMin(np.min(dataset.iloc[w:end, feauture]))
-        feautureObject.setRange(np.ptp(dataset.iloc[w:end, feauture]))
+        feautureObject.setΜean(np.mean(dataset.iloc[w:end, feature]))
+        feautureObject.setSTD(np.std(dataset.iloc[w:end, feature]))
+        feautureObject.setMax(np.max(dataset.iloc[w:end, feature]))
+        feautureObject.setMin(np.min(dataset.iloc[w:end, feature]))
+        feautureObject.setRange(np.ptp(dataset.iloc[w:end, feature]))
 
-        percentile = np.percentile(dataset.iloc[w:end, feauture], [25, 50, 75])
+        percentile = np.percentile(dataset.iloc[w:end, feature], [25, 50, 75])
         feautureObject.setPercentile25(percentile[0])
         feautureObject.setPercentile50(percentile[1])
         feautureObject.setPercentile75(percentile[2])
-        feautureObject.setEntropy(entropy(dataset.iloc[w:end, feauture], base = 2))
+        feautureObject.setEntropy(entropy(dataset.iloc[w:end, feature], base = 2))
 
-        feautureObject.setKurtosis(kurtosis(dataset.iloc[w:end, feauture]))
-        feautureObject.setSkewness(skew(dataset.iloc[w:end, feauture]))
+        feautureObject.setKurtosis(kurtosis(dataset.iloc[w:end, feature]))
+        feautureObject.setSkewness(skew(dataset.iloc[w:end, feature]))
 
         # Output Label
         feautureObject.setY(output)
@@ -284,395 +283,366 @@ def AlgorithmExecution(trainData, testData, algorithm, parameters, text, model):
 
     return decision, model, y_test
 
-# =============================================================================
-# Load Dataset and Create Panda Dataframes
-# =============================================================================
-# Set the absolute path in which the json files are saved.
-path = '/Users/angelikitsintzira/Downloads/Dissertation/sensors_data'
-users = [ f.path for f in os.scandir(path) if f.is_dir() ]
-info = pd.DataFrame(columns= ['accelometer_size', 'gyroscope_size', 'timestamp'])
+# Load Dataset and save it in Dataframes
+def loadDataset(path, screenName):
 
-accelerometer = pd.DataFrame(columns=['x', 'y', 'z', 'screen', 'user', 'magnitude','combine_angle', 'timestamp'])
-gyroscope = pd.DataFrame(columns=['x_gyroscope', 'y_gyroscope', 'z_gyroscope', 'screen_gyroscope', 'user_gyroscope', 'magnitude_gyroscope', 'combine_angle_gyroscope', 'timestamp_gyroscope'])
-screenName = 'MemoriaGame'
-Gestures = pd.DataFrame(columns=['type', 'dx', 'dy', 'vx', 'vy', 'screen', 'user', 't_start', 't_stop'])
+    users = [ f.path for f in os.scandir(path) if f.is_dir() ]
+    info = pd.DataFrame(columns= ['accelometer_size', 'gyroscope_size', 'timestamp'])
 
-usersCleanName = []
+    accelerometer = pd.DataFrame(columns=['x', 'y', 'z', 'screen', 'user', 'magnitude','combine_angle', 'timestamp'])
+    gyroscope = pd.DataFrame(columns=['x_gyroscope', 'y_gyroscope', 'z_gyroscope', 'screen_gyroscope', 'user_gyroscope', 'magnitude_gyroscope', 'combine_angle_gyroscope', 'timestamp_gyroscope'])
 
-# Read sensors data from json file and save them in Dataframes
-for i in range(0, len(users)):
+    usersCleanName = []
 
-    json_files = [pos_json for pos_json in os.listdir(users[i]) if pos_json.endswith('.json')]
+    # Read sensors data from json file and save them in Dataframes
+    for i in range(0, len(users)):
 
-    for index, js in enumerate(json_files):
-        with open(os.path.join(users[i], js)) as json_file:
-            json_text = json.load(json_file)
-            accSize = 0
-            gyrSize = 0
-            js = js.replace('.json','')
-            arr = js.split('_')
-            usersCleanName.append(arr[0])
+        json_files = [pos_json for pos_json in os.listdir(users[i]) if pos_json.endswith('.json')]
 
-            for j in json_text['accelerometer']:
-                if screenName in j['screen']:
-                    x = j['x']
-                    y = j['y']
-                    z = j['z']
-                    if x == 0 and y == 0:
-                        continue
-                    screen = j['screen']
-                    user = arr[0]
-                    m = x**2 + y**2 + z**2
-                    m = np.sqrt(m)
-                    ca = np.sqrt(y**2 + z**2)
-                    timestamp = arr[1]
-                    accSize = accSize + 1
-                    df = {'x': x, 'y': y, 'z' : z, 'screen' : screen, 'user': user, 'magnitude' : m, 'combine_angle': ca, 'timestamp': timestamp}
-                    accelerometer = accelerometer.append(df, ignore_index=True)
+        for index, js in enumerate(json_files):
+            with open(os.path.join(users[i], js)) as json_file:
+                json_text = json.load(json_file)
+                accSize = 0
+                gyrSize = 0
+                js = js.replace('.json','')
+                arr = js.split('_')
+                usersCleanName.append(arr[0])
+
+                for j in json_text['accelerometer']:
+                    if screenName in j['screen']:
+                        x = j['x']
+                        y = j['y']
+                        z = j['z']
+                        if x == 0 and y == 0:
+                            continue
+                        screen = j['screen']
+                        user = arr[0]
+                        m = x**2 + y**2 + z**2
+                        m = np.sqrt(m)
+                        ca = np.sqrt(y**2 + z**2)
+                        timestamp = arr[1]
+                        accSize = accSize + 1
+                        df = {'x': x, 'y': y, 'z' : z, 'screen' : screen, 'user': user, 'magnitude' : m, 'combine_angle': ca, 'timestamp': timestamp}
+                        accelerometer = accelerometer.append(df, ignore_index=True)
+                        
+                for j in json_text['gyroscope']:
+                    if screenName in j['screen']:
+                        x = j['x']
+                        y = j['y']
+                        z = j['z']
+                        if x == 0 and y == 0:
+                            continue
+                        screen = j['screen']
+                        user = arr[0]
+                        m = x**2 + y**2 + z**2
+                        m = np.sqrt(m)
+                        ca = np.sqrt(y**2 + z**2)
+                        timestamp = arr[1]
+                        gyrSize =  gyrSize + 1
+                        df = {'x_gyroscope': x, 'y_gyroscope': y, 'z_gyroscope' : z, 'screen_gyroscope' : screen, 'user_gyroscope': user, 'magnitude_gyroscope' : m, 'combine_angle_gyroscope': ca, 'timestamp_gyroscope': timestamp}
+                        gyroscope = gyroscope.append(df, ignore_index=True)
                     
-            for j in json_text['gyroscope']:
-                if screenName in j['screen']:
-                    x = j['x']
-                    y = j['y']
-                    z = j['z']
-                    if x == 0 and y == 0:
-                        continue
-                    screen = j['screen']
-                    user = arr[0]
-                    m = x**2 + y**2 + z**2
-                    m = np.sqrt(m)
-                    ca = np.sqrt(y**2 + z**2)
-                    timestamp = arr[1]
-                    gyrSize =  gyrSize + 1
-                    df = {'x_gyroscope': x, 'y_gyroscope': y, 'z_gyroscope' : z, 'screen_gyroscope' : screen, 'user_gyroscope': user, 'magnitude_gyroscope' : m, 'combine_angle_gyroscope': ca, 'timestamp_gyroscope': timestamp}
-                    gyroscope = gyroscope.append(df, ignore_index=True)
-                
-            dframe = {'accelometer_size': accSize, 'gyroscope_size': gyrSize, 'timestamp': arr[1]}
-            info = info.append(dframe, ignore_index=True)
+                dframe = {'accelometer_size': accSize, 'gyroscope_size': gyrSize, 'timestamp': arr[1]}
+                info = info.append(dframe, ignore_index=True)
 
-# =============================================================================
-# Pre-process 
-# =============================================================================
-# feauture variable gets values 0, 1, 5, 6
-# where 0 is X, 1 is Y, 5 is magnitude and 6 is combined angle
-feauture = 5
-samples = 500
-overlap = 50
-print('Feature: ', feauture)
+    return accelerometer, gyroscope, info, users, usersCleanName
 
-# Objects with metrics for each model
-accelerometerModel = Metrics()
-gyroscopeModel = Metrics()
-ensembleModel = Metrics()
+# This function calculates average performace of each user from 10-Fold
+def averagePerformance_KFold(userModel, modelObject, K):
 
-for user in users:
-    
-    # Objects with features for each model
-    accelerometerFeatures = Features()
-    gyroscopeFeatures = Features()
-
-    # Dataset dataframe
-    df = pd.DataFrame() 
-    df_gyroscope = pd.DataFrame() 
-
-    train = []
-    test = []
-    train_gyroscope = []
-    test_gyroscope  = []
-    arr = user.rsplit('/', 1)
-    user = arr[1]
-    print('User: ', user)
-
-    # Create accelerometer and gyroscope Dataframes where each instance in accelerometer Dataframe 
-    # has an instance in gyroscope Dataframe at the same timestamp. 
-    for ind in info.index: 
-
-        if info['accelometer_size'][ind] == 0 & info['gyroscope_size'][ind] == 0:
-            continue
-        else:
-
-            if info['gyroscope_size'][ind] < info['accelometer_size'][ind]:
-                info['accelometer_size'][ind] = info['gyroscope_size'][ind]   
-        
-            if info['accelometer_size'][ind] < info['gyroscope_size'][ind]:
-                info['gyroscope_size'][ind] = info['accelometer_size'][ind]
-
-            # Indecies where each timestamp contains accelometer and gyroscope measures
-            idxAccelometer = accelerometer.index[accelerometer['timestamp'] == info['timestamp'][ind]]
-            idxGyroscope = gyroscope.index[gyroscope['timestamp_gyroscope'] == info['timestamp'][ind]]
-
-            for i in range(0, info['gyroscope_size'][ind]):
-
-                # Original user
-                if accelerometer.iloc[idxAccelometer[i],4] == user: 
-                    frame = {'x': accelerometer.iloc[idxAccelometer[i],0], 'y' : accelerometer.iloc[idxAccelometer[i],1], 'z' : accelerometer.iloc[idxAccelometer[i],2], 
-                    'screen' : accelerometer.iloc[idxAccelometer[i],3], 'user' : accelerometer.iloc[idxAccelometer[i],4], 'magnitude' : accelerometer.iloc[idxAccelometer[i],5],
-                    'combine_angle' : accelerometer.iloc[idxAccelometer[i],6], 'timestamp': accelerometer.iloc[idxAccelometer[i],7]}
-                    frame2 = {  'x_gyroscope' : gyroscope.iloc[idxGyroscope[i],0], 'y_gyroscope': gyroscope.iloc[idxGyroscope[i],1], 
-                    'z_gyroscope': gyroscope.iloc[idxGyroscope[i],2], 'screen_gyroscope': gyroscope.iloc[idxGyroscope[i],3], 'user_gyroscope' : gyroscope.iloc[idxGyroscope[i],4], 
-                    'magnitude_gyroscope': gyroscope.iloc[idxGyroscope[i],5], 'combine_angle_gyroscope': gyroscope.iloc[idxGyroscope[i],6], 'timestamp_gyroscope': gyroscope.iloc[idxGyroscope[i],7]}
-                    train.append(frame)
-                    train_gyroscope.append(frame2)
-                # Attackers    
-                else:
-                    frame = {'x': accelerometer.iloc[idxAccelometer[i],0], 'y' : accelerometer.iloc[idxAccelometer[i],1], 'z' : accelerometer.iloc[idxAccelometer[i],2], 
-                    'screen' : accelerometer.iloc[idxAccelometer[i],3], 'user' : accelerometer.iloc[idxAccelometer[i],4], 'magnitude' : accelerometer.iloc[idxAccelometer[i],5],
-                    'combine_angle' : accelerometer.iloc[idxAccelometer[i],6], 'timestamp': accelerometer.iloc[idxAccelometer[i],7]}
-                    frame2 = {  'x_gyroscope' : gyroscope.iloc[idxGyroscope[i],0], 'y_gyroscope': gyroscope.iloc[idxGyroscope[i],1], 
-                    'z_gyroscope': gyroscope.iloc[idxGyroscope[i],2], 'screen_gyroscope': gyroscope.iloc[idxGyroscope[i],3], 'user_gyroscope' : gyroscope.iloc[idxGyroscope[i],4], 
-                    'magnitude_gyroscope': gyroscope.iloc[idxGyroscope[i],5], 'combine_angle_gyroscope': gyroscope.iloc[idxGyroscope[i],6], 'timestamp_gyroscope': gyroscope.iloc[idxGyroscope[i],7]}
-                    test.append(frame)
-                    test_gyroscope.append(frame2)
-                    
-    print('Accelometer Data Sizes:\n', 'Train Size One Class: ', len(train), ' Test Size Two Class: ', len(test))
-    train = pd.DataFrame(train)
-    test = pd.DataFrame(test)
-
-    train_gyroscope = pd.DataFrame(train_gyroscope)
-    test_gyroscope = pd.DataFrame(test_gyroscope)
-
-    # =============================================================================
-    # Feature Extraction
-    # =============================================================================     
-
-    accelerometerFeatures = FeatureExtraction(train, samples, overlap, 1, accelerometerFeatures)
-    gyroscopeFeatures = FeatureExtraction(train_gyroscope, samples, overlap, 1, gyroscopeFeatures)
-
-    accelerometerFeatures = FeatureExtraction(test, samples, overlap, -1, accelerometerFeatures)
-    gyroscopeFeatures = FeatureExtraction(test_gyroscope, samples, overlap, -1, gyroscopeFeatures)
-
-    # =============================================================================
-    # Machine Learning Models
-    # ============================================================================= 
-
-    # Add features to dataframe
-    df['Mean'] = accelerometerFeatures.getMean() 
-    df['Std'] = accelerometerFeatures.getSTD()
-    df['Skew'] = accelerometerFeatures.getSkewness()
-    df['Kurtosis'] = accelerometerFeatures.getKurtosis()
-    df['Max'] = accelerometerFeatures.getMax()
-    df['Min'] = accelerometerFeatures.getMin()
-    #df['Range'] = Range
-    df['Percentile25'] = accelerometerFeatures.getPercentile25()
-    df['Percentile50'] = accelerometerFeatures.getPercentile50()
-    df['Percentile75'] = accelerometerFeatures.getPercentile75()
-    #df['Entropy'] = Entropy
-
-    df['Amplitude1'] = accelerometerFeatures.getAmplitude1()
-    df['Amplitude2'] = accelerometerFeatures.getAmplitude2()
-    df['Frequency'] = accelerometerFeatures.getFrequency2()
-    df['MeanFrequency'] = accelerometerFeatures.getMean_frequency()
-
-    df_gyroscope['Mean_Gyroscope'] = gyroscopeFeatures.getMean()
-    df_gyroscope['Std_Gyroscope'] = gyroscopeFeatures.getSTD()
-    df_gyroscope['Skew_Gyroscope'] = gyroscopeFeatures.getSkewness()
-    df_gyroscope['Kurtosis_Gyroscope'] = gyroscopeFeatures.getKurtosis()
-    df_gyroscope['Max_Gyroscope'] = gyroscopeFeatures.getMax()
-    df_gyroscope['Min_Gyroscope'] = gyroscopeFeatures.getMin()
-    #df_gyroscope['Range_Gyroscope'] = Range_Gyroscope
-    df_gyroscope['Percentile25_Gyroscope'] = gyroscopeFeatures.getPercentile25()
-    df_gyroscope['Percentile50_Gyroscope'] = gyroscopeFeatures.getPercentile50()
-    df_gyroscope['Percentile75_Gyroscope'] = gyroscopeFeatures.getPercentile75()
-    #df_gyroscope['Entropy_Gyroscope'] = Entropy_Gyroscope
-
-    df_gyroscope['Amplitude1_Gyroscope'] = gyroscopeFeatures.getAmplitude1()
-    df_gyroscope['Amplitude2_Gyroscope'] = gyroscopeFeatures.getAmplitude2()
-    df_gyroscope['Frequency_Gyroscope'] = gyroscopeFeatures.getFrequency2()
-    df_gyroscope['MeanFrequency_Gyroscope'] = gyroscopeFeatures.getMean_frequency()
-
-    df['y'] = accelerometerFeatures.getY()
-    df_gyroscope['y_gyroscope'] = gyroscopeFeatures.getY()
-
-    train =  pd.DataFrame(df[df['y'] == 1])
-    test =  pd.DataFrame(df[df['y'] == -1])
-    
-    train_gyroscope =  pd.DataFrame(df_gyroscope[df_gyroscope['y_gyroscope'] == 1])
-    test_gyroscope =  pd.DataFrame(df_gyroscope[df_gyroscope['y_gyroscope'] == -1])
-
-    print('After Sampling Sizes\n','Train Size One Class: ', train.shape[0], 'Test Size Two Class: ', test.shape[0])
-    
-    trainStarter = train
-    testStarter = test
-        
-    trainStarter_gyroscope = train_gyroscope
-    testStarter_gyroscope = test_gyroscope
-
-    accelerometerModelUser = Metrics()
-    gyroscopeModelUser = Metrics()
-    ensembleModelUser = Metrics()
-    
-    # 10 Executions per original user
-    for fold in range(0,10):
-
-        # =============================================================================
-        # Best Hyper-Parameters values for Model 1 - Accelerometer
-        # ============================================================================= 
-        '''
-        LocalOutlierFactor(n_neighbors = 3, novelty = True)
-        EllipticEnvelope(contamination = 0)
-        IsolationForest(n_jobs = -1, n_estimators = 100, contamination = 0, bootstrap = False)
-        svm.OneClassSVM(gamma = 0.1, kernel="rbf", nu = 0.01, cache_size = 500)
-        '''
-
-        # =============================================================================
-        # Best Hyper-Parameters values for Model 2 - Gyroscope
-        # ============================================================================= 
-        '''
-        LocalOutlierFactor(n_neighbors = 5, novelty = True)
-        EllipticEnvelope(contamination = 0)
-        IsolationForest(n_jobs = -1, n_estimators = 100, max_features = 1, contamination = 0, bootstrap = False)
-        svm.OneClassSVM(gamma = 0.001, kernel="rbf", nu = 0.1, cache_size = 500)
-        '''
-        decision1 = []  
-        decision2 = []
-        decision1, accelerometerModelUser, y_test= AlgorithmExecution(trainStarter, testStarter, "LocalOutlierFactor", [3], "Accelerometer", accelerometerModelUser)
-        decision2, gyroscopeModelUser, y_test = AlgorithmExecution(trainStarter_gyroscope, testStarter_gyroscope, "LocalOutlierFactor", [5], "Gyroscope", gyroscopeModelUser)
-
-        # =============================================================================
-        # Enseble Models
-        # ============================================================================= 
-        TP = 0
-        TN = 0
-        FP = 0
-        FN = 0
-        sumPred = 0
-        predictions = []
-        for i in range(0, len(decision1)):
-
-            sumPred = (decision1[i] + decision2[i]) 
-            if sumPred >= 0:
-                predictions.append(1)
-                if y_test.iloc[i] == 1:
-                    TP = TP + 1
-                else:
-                    FP = FP + 1
-            else:
-                predictions.append(-1)
-                if y_test.iloc[i] == -1:
-                    TN = TN + 1
-                else:
-                    FN = FN + 1
-        print('------------- Ensemle Results ---------------')
-        print(TN, " ", FP)
-        print(FN, " ", TP)  
-        print() 
-
-        score = f1_score(y_test, predictions, pos_label= 1)
-        #print('F1 Score: %.3f' % score)
-        acc = accuracy_score(y_test, predictions)
-        cfm = confusion_matrix(y_test, predictions, labels = [-1, 1])
-
-        far = FP/ np.sum(y_test == -1)
-        frr = FN/ np.sum(y_test == 1)           
-        print('FAR: ', far, ' FFR: ', frr)
-
-        ensembleModelUser.setfalseAccept(cfm[0,1])
-        ensembleModelUser.setfalseReject(cfm[1,0])
-        ensembleModelUser.settrueAccept(cfm[1,1])
-        ensembleModelUser.settrueReject(cfm[0,0])
-        ensembleModelUser.setsizeTest(y_test.shape[0])
-        ensembleModelUser.setAccuracy(acc)
-        ensembleModelUser.setFAR(far)
-        ensembleModelUser.setFRR(frr)
-        ensembleModelUser.setf1score(score)
-
-    # =============================================================================
-    # Average Performance per user (10-FOLD)
-    # =============================================================================     
-    
     far = 0
     frr = 0
-    far1 = 0
-    far2 = 0
-    frr1 = 0
-    frr2 = 0
-    accu = 0
+    accu = 0  
     fscore = 0
-    accu1 = 0
-    accu2 = 0
-    fscore1 =0
-    fscore2 = 0
     FA = 0
     FalseR = 0
     TrueA = 0
     TrueR = 0
     testS = 0
-    FA1 = 0
-    FA2 = 0
-    FalseR1 = 0
-    FalseR2 = 0
-    TrueA1 = 0
-    TrueA2 = 0
-    TrueR1 = 0
-    TrueR2 = 0
-    testS1 = 0
-    testS2 = 0
 
-    for index in range(0,10):
+    for index in range(0, K):
 
-        far = far + ensembleModelUser.getFAR()[index]  
-        frr = frr + ensembleModelUser.getFRR()[index]  
-        accu = accu + ensembleModelUser.getAccuracy()[index]  
-        fscore = fscore + ensembleModelUser.getf1score()[index]
-        FA = FA + ensembleModelUser.getfalseAccept()[index]
-        FalseR = FalseR + ensembleModelUser.getfalseReject()[index]
-        TrueA = TrueA + ensembleModelUser.gettrueAccept()[index]
-        TrueR = TrueR + ensembleModelUser.gettrueReject()[index]
-        testS = testS + ensembleModelUser.getsizeTest()[index]
-
-        far1 = far1 + accelerometerModelUser.getFAR()[index]
-        frr1 = frr1 + accelerometerModelUser.getFRR()[index]
-        accu1 = accu1 + accelerometerModelUser.getAccuracy()[index]
-        fscore1 = fscore1 + accelerometerModelUser.getf1score()[index]
-        FA1 = FA1 + accelerometerModelUser.getfalseAccept()[index]
-        FalseR1 =  FalseR1 + accelerometerModelUser.getfalseReject()[index]
-        TrueA1 = TrueA1 + accelerometerModelUser.gettrueAccept()[index]
-        TrueR1 = TrueR1 + accelerometerModelUser.gettrueReject()[index]
-        testS1 = testS1 + accelerometerModelUser.getsizeTest()[index]
-
-        far2 = far2 + gyroscopeModelUser.getFAR()[index]
-        frr2 = frr2 + gyroscopeModelUser.getFRR()[index]
-        accu2 = accu2 + gyroscopeModelUser.getAccuracy()[index]
-        fscore2 = fscore1 + gyroscopeModelUser.getf1score()[index]
-        FA2 = FA2 +  gyroscopeModelUser.getfalseAccept()[index]
-        FalseR2 =  FalseR2 + gyroscopeModelUser.getfalseReject()[index]
-        TrueA2 = TrueA1 +  gyroscopeModelUser.gettrueAccept()[index]
-        TrueR2 = TrueR1 +  gyroscopeModelUser.gettrueReject()[index]
-        testS2 = testS2 +  gyroscopeModelUser.getsizeTest()[index]
-
-    accelerometerModel.setAccuracy(accu1/10)
-    accelerometerModel.setf1score(fscore1/10)
-    accelerometerModel.setFAR(far1/10)
-    accelerometerModel.setFRR(frr1/10)
-    accelerometerModel.setfalseAccept(FA1/10)
-    accelerometerModel.setfalseReject(FalseR1/10)
-    accelerometerModel.settrueAccept(TrueA1/10)
-    accelerometerModel.settrueReject(TrueR1/10)
-    accelerometerModel.setsizeTest(abs(testS1/10))
-
-    gyroscopeModel.setAccuracy(accu2/10)
-    gyroscopeModel.setf1score(fscore2/10)
-    gyroscopeModel.setFAR(far2/10)
-    gyroscopeModel.setFRR(frr2/10)
-    gyroscopeModel.setfalseAccept(FA2/10)
-    gyroscopeModel.setfalseReject(FalseR2/10)
-    gyroscopeModel.settrueAccept(TrueA2/10)
-    gyroscopeModel.settrueReject(TrueR2/10)
-    gyroscopeModel.setsizeTest(abs(testS2/10))
-
-    ensembleModel.setAccuracy(accu/10)
-    ensembleModel.setf1score(fscore/10)
-    ensembleModel.setFAR(far/10)
-    ensembleModel.setFRR(frr/10)
-    ensembleModel.setfalseAccept(FA/10)
-    ensembleModel.setfalseReject(FalseR/10)
-    ensembleModel.settrueAccept(TrueA/10)
-    ensembleModel.settrueReject(TrueR/10)
-    ensembleModel.setsizeTest(abs(testS/10))
+        far = far + userModel.getFAR()[index]  
+        frr = frr + userModel.getFRR()[index]  
+        accu = accu + userModel.getAccuracy()[index]  
+        fscore = fscore + userModel.getf1score()[index]
+        FA = FA + userModel.getfalseAccept()[index]
+        FalseR = FalseR + userModel.getfalseReject()[index]
+        TrueA = TrueA + userModel.gettrueAccept()[index]
+        TrueR = TrueR + userModel.gettrueReject()[index]
+        testS = testS + userModel.getsizeTest()[index]
     
-# =============================================================================
-# Performance Evaluation
-# ============================================================================= 
-PerformanceMetrics(users, accelerometerModel, "ACCELEROMETER")
-PerformanceMetrics(users, gyroscopeModel, "GYROSCOPE")
-PerformanceMetrics(users, ensembleModel, "ENSEMLBE")
+    modelObject.setAccuracy(accu/K)
+    modelObject.setf1score(fscore/K)
+    modelObject.setFAR(far/K)
+    modelObject.setFRR(frr/K)
+    modelObject.setfalseAccept(FA/K)
+    modelObject.setfalseReject(FalseR/K)
+    modelObject.settrueAccept(TrueA/K)
+    modelObject.settrueReject(TrueR/K)
+    modelObject.setsizeTest(abs(testS/K))
+
+    return modelObject
+
+# This function contains the methodology of Continious Implicit Authentication
+def continuousImplicitAuthentication(users, accelerometer, gyroscope, info):
+
+    # feauture variable gets values 0, 1, 5, 6
+    # where 0 is X, 1 is Y, 5 is magnitude and 6 is combined angle
+    feauture = 5
+    samples = 500
+    overlap = 50
+    print('Feature: ', feauture)
+
+    # Objects with metrics for each model
+    accelerometerModel = Metrics()
+    gyroscopeModel = Metrics()
+    ensembleModel = Metrics()
+
+    for user in users:
+        
+        # Objects with features for each model
+        accelerometerFeatures = Features()
+        gyroscopeFeatures = Features()
+
+        # Dataset dataframe
+        df = pd.DataFrame() 
+        df_gyroscope = pd.DataFrame() 
+
+        train = []
+        test = []
+        train_gyroscope = []
+        test_gyroscope  = []
+        arr = user.rsplit('/', 1)
+        user = arr[1]
+        print('User: ', user)
+
+        # Create accelerometer and gyroscope Dataframes where each instance in accelerometer Dataframe 
+        # has an instance in gyroscope Dataframe at the same timestamp. 
+        for ind in info.index: 
+
+            if info['accelometer_size'][ind] == 0 & info['gyroscope_size'][ind] == 0:
+                continue
+            else:
+
+                if info['gyroscope_size'][ind] < info['accelometer_size'][ind]:
+                    info['accelometer_size'][ind] = info['gyroscope_size'][ind]   
+            
+                if info['accelometer_size'][ind] < info['gyroscope_size'][ind]:
+                    info['gyroscope_size'][ind] = info['accelometer_size'][ind]
+
+                # Indecies where each timestamp contains accelometer and gyroscope measures
+                idxAccelometer = accelerometer.index[accelerometer['timestamp'] == info['timestamp'][ind]]
+                idxGyroscope = gyroscope.index[gyroscope['timestamp_gyroscope'] == info['timestamp'][ind]]
+
+                for i in range(0, info['gyroscope_size'][ind]):
+
+                    # Original user
+                    if accelerometer.iloc[idxAccelometer[i],4] == user: 
+                        frame = {'x': accelerometer.iloc[idxAccelometer[i],0], 'y' : accelerometer.iloc[idxAccelometer[i],1], 'z' : accelerometer.iloc[idxAccelometer[i],2], 
+                        'screen' : accelerometer.iloc[idxAccelometer[i],3], 'user' : accelerometer.iloc[idxAccelometer[i],4], 'magnitude' : accelerometer.iloc[idxAccelometer[i],5],
+                        'combine_angle' : accelerometer.iloc[idxAccelometer[i],6], 'timestamp': accelerometer.iloc[idxAccelometer[i],7]}
+                        frame2 = {  'x_gyroscope' : gyroscope.iloc[idxGyroscope[i],0], 'y_gyroscope': gyroscope.iloc[idxGyroscope[i],1], 
+                        'z_gyroscope': gyroscope.iloc[idxGyroscope[i],2], 'screen_gyroscope': gyroscope.iloc[idxGyroscope[i],3], 'user_gyroscope' : gyroscope.iloc[idxGyroscope[i],4], 
+                        'magnitude_gyroscope': gyroscope.iloc[idxGyroscope[i],5], 'combine_angle_gyroscope': gyroscope.iloc[idxGyroscope[i],6], 'timestamp_gyroscope': gyroscope.iloc[idxGyroscope[i],7]}
+                        train.append(frame)
+                        train_gyroscope.append(frame2)
+                    # Attackers    
+                    else:
+                        frame = {'x': accelerometer.iloc[idxAccelometer[i],0], 'y' : accelerometer.iloc[idxAccelometer[i],1], 'z' : accelerometer.iloc[idxAccelometer[i],2], 
+                        'screen' : accelerometer.iloc[idxAccelometer[i],3], 'user' : accelerometer.iloc[idxAccelometer[i],4], 'magnitude' : accelerometer.iloc[idxAccelometer[i],5],
+                        'combine_angle' : accelerometer.iloc[idxAccelometer[i],6], 'timestamp': accelerometer.iloc[idxAccelometer[i],7]}
+                        frame2 = {  'x_gyroscope' : gyroscope.iloc[idxGyroscope[i],0], 'y_gyroscope': gyroscope.iloc[idxGyroscope[i],1], 
+                        'z_gyroscope': gyroscope.iloc[idxGyroscope[i],2], 'screen_gyroscope': gyroscope.iloc[idxGyroscope[i],3], 'user_gyroscope' : gyroscope.iloc[idxGyroscope[i],4], 
+                        'magnitude_gyroscope': gyroscope.iloc[idxGyroscope[i],5], 'combine_angle_gyroscope': gyroscope.iloc[idxGyroscope[i],6], 'timestamp_gyroscope': gyroscope.iloc[idxGyroscope[i],7]}
+                        test.append(frame)
+                        test_gyroscope.append(frame2)
+                        
+        print('Accelometer Data Sizes:\n', 'Train Size One Class: ', len(train), ' Test Size Two Class: ', len(test))
+        train = pd.DataFrame(train)
+        test = pd.DataFrame(test)
+
+        train_gyroscope = pd.DataFrame(train_gyroscope)
+        test_gyroscope = pd.DataFrame(test_gyroscope)
+
+        # =============================================================================
+        # Feature Extraction
+        # =============================================================================     
+
+        accelerometerFeatures = FeatureExtraction(train, samples, overlap, 1, accelerometerFeatures, feauture)
+        gyroscopeFeatures = FeatureExtraction(train_gyroscope, samples, overlap, 1, gyroscopeFeatures, feauture)
+
+        accelerometerFeatures = FeatureExtraction(test, samples, overlap, -1, accelerometerFeatures, feauture)
+        gyroscopeFeatures = FeatureExtraction(test_gyroscope, samples, overlap, -1, gyroscopeFeatures, feauture)
+
+        # =============================================================================
+        # Machine Learning Models
+        # ============================================================================= 
+
+        # Add features to dataframe
+        df['Mean'] = accelerometerFeatures.getMean() 
+        df['Std'] = accelerometerFeatures.getSTD()
+        df['Skew'] = accelerometerFeatures.getSkewness()
+        df['Kurtosis'] = accelerometerFeatures.getKurtosis()
+        df['Max'] = accelerometerFeatures.getMax()
+        df['Min'] = accelerometerFeatures.getMin()
+        #df['Range'] = Range
+        df['Percentile25'] = accelerometerFeatures.getPercentile25()
+        df['Percentile50'] = accelerometerFeatures.getPercentile50()
+        df['Percentile75'] = accelerometerFeatures.getPercentile75()
+        #df['Entropy'] = Entropy
+
+        df['Amplitude1'] = accelerometerFeatures.getAmplitude1()
+        df['Amplitude2'] = accelerometerFeatures.getAmplitude2()
+        df['Frequency'] = accelerometerFeatures.getFrequency2()
+        df['MeanFrequency'] = accelerometerFeatures.getMean_frequency()
+
+        df_gyroscope['Mean_Gyroscope'] = gyroscopeFeatures.getMean()
+        df_gyroscope['Std_Gyroscope'] = gyroscopeFeatures.getSTD()
+        df_gyroscope['Skew_Gyroscope'] = gyroscopeFeatures.getSkewness()
+        df_gyroscope['Kurtosis_Gyroscope'] = gyroscopeFeatures.getKurtosis()
+        df_gyroscope['Max_Gyroscope'] = gyroscopeFeatures.getMax()
+        df_gyroscope['Min_Gyroscope'] = gyroscopeFeatures.getMin()
+        #df_gyroscope['Range_Gyroscope'] = Range_Gyroscope
+        df_gyroscope['Percentile25_Gyroscope'] = gyroscopeFeatures.getPercentile25()
+        df_gyroscope['Percentile50_Gyroscope'] = gyroscopeFeatures.getPercentile50()
+        df_gyroscope['Percentile75_Gyroscope'] = gyroscopeFeatures.getPercentile75()
+        #df_gyroscope['Entropy_Gyroscope'] = Entropy_Gyroscope
+
+        df_gyroscope['Amplitude1_Gyroscope'] = gyroscopeFeatures.getAmplitude1()
+        df_gyroscope['Amplitude2_Gyroscope'] = gyroscopeFeatures.getAmplitude2()
+        df_gyroscope['Frequency_Gyroscope'] = gyroscopeFeatures.getFrequency2()
+        df_gyroscope['MeanFrequency_Gyroscope'] = gyroscopeFeatures.getMean_frequency()
+
+        df['y'] = accelerometerFeatures.getY()
+        df_gyroscope['y_gyroscope'] = gyroscopeFeatures.getY()
+
+        train =  pd.DataFrame(df[df['y'] == 1])
+        test =  pd.DataFrame(df[df['y'] == -1])
+        
+        train_gyroscope =  pd.DataFrame(df_gyroscope[df_gyroscope['y_gyroscope'] == 1])
+        test_gyroscope =  pd.DataFrame(df_gyroscope[df_gyroscope['y_gyroscope'] == -1])
+
+        print('After Sampling Sizes\n','Train Size One Class: ', train.shape[0], 'Test Size Two Class: ', test.shape[0])
+        
+        trainStarter = train
+        testStarter = test
+            
+        trainStarter_gyroscope = train_gyroscope
+        testStarter_gyroscope = test_gyroscope
+
+        accelerometerModelUser = Metrics()
+        gyroscopeModelUser = Metrics()
+        ensembleModelUser = Metrics()
+        
+        # 10 Executions per original user
+        for fold in range(0,10):
+
+            # =============================================================================
+            # Best Hyper-Parameters values for Model 1 - Accelerometer
+            # ============================================================================= 
+            '''
+            LocalOutlierFactor(n_neighbors = 3, novelty = True)
+            EllipticEnvelope(contamination = 0)
+            IsolationForest(n_jobs = -1, n_estimators = 100, contamination = 0, bootstrap = False)
+            svm.OneClassSVM(gamma = 0.1, kernel="rbf", nu = 0.01, cache_size = 500)
+            '''
+
+            # =============================================================================
+            # Best Hyper-Parameters values for Model 2 - Gyroscope
+            # ============================================================================= 
+            '''
+            LocalOutlierFactor(n_neighbors = 5, novelty = True)
+            EllipticEnvelope(contamination = 0)
+            IsolationForest(n_jobs = -1, n_estimators = 100, max_features = 1, contamination = 0, bootstrap = False)
+            svm.OneClassSVM(gamma = 0.001, kernel="rbf", nu = 0.1, cache_size = 500)
+            '''
+            decision1 = []  
+            decision2 = []
+            decision1, accelerometerModelUser, y_test= AlgorithmExecution(trainStarter, testStarter, "LocalOutlierFactor", [3], "Accelerometer", accelerometerModelUser)
+            decision2, gyroscopeModelUser, y_test = AlgorithmExecution(trainStarter_gyroscope, testStarter_gyroscope, "LocalOutlierFactor", [5], "Gyroscope", gyroscopeModelUser)
+
+            # =============================================================================
+            # Enseble Models
+            # ============================================================================= 
+            TP = 0
+            TN = 0
+            FP = 0
+            FN = 0
+            sumPred = 0
+            predictions = []
+            for i in range(0, len(decision1)):
+
+                sumPred = (decision1[i] + decision2[i]) 
+                if sumPred >= 0:
+                    predictions.append(1)
+                    if y_test.iloc[i] == 1:
+                        TP = TP + 1
+                    else:
+                        FP = FP + 1
+                else:
+                    predictions.append(-1)
+                    if y_test.iloc[i] == -1:
+                        TN = TN + 1
+                    else:
+                        FN = FN + 1
+            print('------------- Ensemle Results ---------------')
+            print(TN, " ", FP)
+            print(FN, " ", TP)  
+            print() 
+
+            score = f1_score(y_test, predictions, pos_label= 1)
+            #print('F1 Score: %.3f' % score)
+            acc = accuracy_score(y_test, predictions)
+            cfm = confusion_matrix(y_test, predictions, labels = [-1, 1])
+
+            far = FP/ np.sum(y_test == -1)
+            frr = FN/ np.sum(y_test == 1)           
+            print('FAR: ', far, ' FFR: ', frr)
+
+            ensembleModelUser.setfalseAccept(cfm[0,1])
+            ensembleModelUser.setfalseReject(cfm[1,0])
+            ensembleModelUser.settrueAccept(cfm[1,1])
+            ensembleModelUser.settrueReject(cfm[0,0])
+            ensembleModelUser.setsizeTest(y_test.shape[0])
+            ensembleModelUser.setAccuracy(acc)
+            ensembleModelUser.setFAR(far)
+            ensembleModelUser.setFRR(frr)
+            ensembleModelUser.setf1score(score)
+
+        # =============================================================================
+        # Average Performance per user (10-FOLD)
+        # =============================================================================     
+        ensembleModel = averagePerformance_KFold(ensembleModelUser, ensembleModel, 10)
+        accelerometerModel = averagePerformance_KFold(accelerometerModelUser, accelerometerModel, 10)
+        gyroscopeModel = averagePerformance_KFold(gyroscopeModelUser, gyroscopeModel, 10)
+
+    return  accelerometerModel, gyroscopeModel, ensembleModel
+
+# Main Controller Function
+def main(): 
+
+    # =============================================================================
+    # Load Dataset and Create Panda Dataframes
+    # =============================================================================
+    # Set the absolute path in which the json files are saved.
+    path = ''
+    screen = 'MathisisGame'
+    accelerometer, gyroscope, info, users, usersCleanName = loadDataset(path, screen)
+
+    # =============================================================================
+    # Dataset Pre-process, Sampling, Feature Extraction and 
+    # Continuous Implicit Authentication Methodology 
+    # =============================================================================
+    accelerometerModel, gyroscopeModel, ensembleModel = continuousImplicitAuthentication(users, accelerometer, gyroscope, info)
+
+    # =============================================================================
+    # Performance Evaluation
+    # ============================================================================= 
+    PerformanceMetrics(users, accelerometerModel, "ACCELEROMETER")
+    PerformanceMetrics(users, gyroscopeModel, "GYROSCOPE")
+    PerformanceMetrics(users, ensembleModel, "ENSEMLBE")
+
+# Calling main function 
+if __name__=="__main__": 
+    main()
