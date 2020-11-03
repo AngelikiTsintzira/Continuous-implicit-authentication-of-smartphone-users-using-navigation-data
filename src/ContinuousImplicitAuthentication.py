@@ -292,8 +292,6 @@ def loadDataset(path, screenName):
     accelerometer = pd.DataFrame(columns=['x', 'y', 'z', 'screen', 'user', 'magnitude','combine_angle', 'timestamp'])
     gyroscope = pd.DataFrame(columns=['x_gyroscope', 'y_gyroscope', 'z_gyroscope', 'screen_gyroscope', 'user_gyroscope', 'magnitude_gyroscope', 'combine_angle_gyroscope', 'timestamp_gyroscope'])
 
-    usersCleanName = []
-
     # Read sensors data from json file and save them in Dataframes
     for i in range(0, len(users)):
 
@@ -306,7 +304,6 @@ def loadDataset(path, screenName):
                 gyrSize = 0
                 js = js.replace('.json','')
                 arr = js.split('_')
-                usersCleanName.append(arr[0])
 
                 for j in json_text['accelerometer']:
                     if screenName in j['screen']:
@@ -345,7 +342,7 @@ def loadDataset(path, screenName):
                 dframe = {'accelometer_size': accSize, 'gyroscope_size': gyrSize, 'timestamp': arr[1]}
                 info = info.append(dframe, ignore_index=True)
 
-    return accelerometer, gyroscope, info, users, usersCleanName
+    return accelerometer, gyroscope, info, users
 
 # This function calculates average performace of each user from 10-Fold
 def averagePerformance_KFold(userModel, modelObject, K):
@@ -628,7 +625,7 @@ def main():
     # Set the absolute path in which the json files are saved.
     path = ''
     screen = 'MathisisGame'
-    accelerometer, gyroscope, info, users, usersCleanName = loadDataset(path, screen)
+    accelerometer, gyroscope, info, users = loadDataset(path, screen)
 
     # =============================================================================
     # Dataset Pre-process, Sampling, Feature Extraction and 
