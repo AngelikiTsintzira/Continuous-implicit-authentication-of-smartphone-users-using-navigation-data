@@ -708,7 +708,7 @@ def main():
     # Load Dataset and Create Panda Dataframes
     # =============================================================================
     # Set the absolute path in which the json files are saved.
-    path = '/Users/angelikitsintzira/Downloads/Dissertation/sensors_data'
+    path = ''
     screen = "MemoriaGame"
     accelerometer, gyroscope, info, users, usersCleanName = loadDataset(path, screen)
     Gestures = loadGecturesData(usersCleanName, screen)
